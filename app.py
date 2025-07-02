@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import random
+import copy
 from typing import Dict, Any
 from styles import build_style_maps, AVAILABLE_SYMBOLS   # отдельный файл
 
@@ -15,6 +16,8 @@ def load_csv(url: str) -> pd.DataFrame:
     return pd.read_csv(url)
 
 df = load_csv(st.secrets["CSV_URL"])
+
+df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
 
 # базовые карты из styles.py  → копии, которые можно править
 base_color, base_symbol, base_size = build_style_maps(
@@ -115,13 +118,17 @@ plot_df[size_col] = plot_df["type"].map(size_map_user).fillna(20)
 bg_color = "#ffffff"
 font_color = "#000000"
 
+
+df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
+
+
 # ───────────────────────────────────────────────────────────────────
 # PLOT
 # ───────────────────────────────────────────────────────────────────
 fig = px.scatter(
     plot_df,
     x=x_axis, y=y_axis,
-    color=plot_df["Location"].astype(str),          # оттенки по Location
+    color=plot_df["type_loc"].astype(str),          # оттенки по Location
     symbol=plot_df["type"].astype(str),             # фигура по Type
     size=plot_df[size_col],
     color_discrete_map=color_map_user,
@@ -156,6 +163,26 @@ fig.update_yaxes(
     zerolinecolor=font_color
 )
 
+# ▸ сразу после fig = px.scatter(...)  (или после update_layout)
+
+axis_style = dict(
+    linecolor="#000000",          # основная линия оси
+    mirror=True, showline=True,   # рисовать «рамку»
+    ticks="inside",               # насечки внутрь поля
+    ticklen=6,                    # длина насечки, px
+    tickwidth=1,                  # толщина линии
+    tickcolor="#000000",          # цвет насечки
+    gridcolor="rgba(0,0,0,0.15)",     # крупная сетка
+    minor_showgrid=True,
+    minor_gridwidth=0.5,
+    minor_gridcolor="rgba(0,0,0,0.05)",
+)
+
+fig.update_xaxes(**axis_style)
+fig.update_yaxes(**axis_style)
+
+
+
 # convert chosen axis columns to numeric so Plotly treats them as continuous
 for _col in [x_axis, y_axis]:
     if _col in df.columns:
@@ -174,3 +201,34 @@ for tr in fig.data:
 
 st.plotly_chart(fig, use_container_width=True)
 
+export_fig = copy.deepcopy(fig)
+export_fig.update_layout(
+    width=1200, height=800,
+    margin=dict(l=80, r=120, t=60, b=60),   # +180 px справа
+    showlegend=False,
+)
+
+# ── КНОПКИ СКАЧИВАНИЯ ─────────────────────────────────────────────
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.download_button(
+        "Save plot (PNG)",
+        export_fig.to_image(format="png"),
+        file_name="plot.png"
+    )
+
+with col2:
+    st.download_button(
+        "Save data (CSV)",
+        plot_df.to_csv(index=False),
+        file_name="data.csv"
+    )
+
+with col3:
+    st.download_button(
+        "Save plot (PDF)",
+        export_fig.to_image(format="pdf"),
+        file_name="plot.pdf",
+        mime="application/pdf"
+    )
