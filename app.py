@@ -27,6 +27,29 @@ color_map_user  = base_color.copy()
 symbol_map_user = base_symbol.copy()
 size_map_user   = base_size.copy()
 
+
+def base_colors_for_group(col: str) -> Dict[str, str]:
+    """Return default colours for the requested grouping column."""
+    if col == "type_loc":
+        return base_color
+    cmap: Dict[str, str] = {}
+    for key, val in base_color.items():
+        t, loc = key.split("|", 1)
+        if col == "type":
+            cmap.setdefault(t, val)
+        elif col == "Location":
+            cmap.setdefault(loc, val)
+    return cmap
+
+
+def type_from_group(val: Any, col: str) -> str | None:
+    """Extract type value from a group entry or return None."""
+    if col == "type":
+        return str(val)
+    if col == "type_loc":
+        return str(val).split("|", 1)[0]
+    return None
+
 # ───────────────────────────────────────────────────────────────────
 # DEFAULT AXES
 # ───────────────────────────────────────────────────────────────────
@@ -63,6 +86,8 @@ group_col = st.sidebar.selectbox(
     "Group by", df.columns, index=df.columns.get_loc(DEFAULT_GROUP)
 )
 
+group_base_colors = base_colors_for_group(group_col)
+
 styles: Dict[str, Dict[str, Any]] = {}    # собираем выбор пользователя
 visible_groups = []
 
@@ -71,34 +96,40 @@ predefined_symbols = AVAILABLE_SYMBOLS.copy()
 
 for g in sorted(df[group_col].dropna().unique()):
     group_str = str(g)
+    t_val = type_from_group(g, group_col)
     defaults = {
-        "color":  color_map_user.get(group_str, "#1f77b4"),
-        "symbol": symbol_map_user.get(group_str, "circle"),
-        "size":   size_map_user.get(group_str, 20),
+        "color":  color_map_user.get(group_str, group_base_colors.get(group_str, "#1f77b4")),
+        "symbol": symbol_map_user.get(t_val, "circle") if t_val else "circle",
+        "size":   size_map_user.get(t_val, 20) if t_val else 20,
     }
 
-    colour_key, symbol_key = f"c_{g}", f"s_{g}"
+    colour_key = f"c_{g}"
+    symbol_key = f"s_{t_val}" if t_val else f"s_{g}"
     st.session_state.setdefault(colour_key, defaults["color"])
-    st.session_state.setdefault(symbol_key, defaults["symbol"])
+    if t_val:
+        st.session_state.setdefault(symbol_key, defaults["symbol"])
 
     with st.sidebar.expander(group_str, expanded=False):
         show   = st.checkbox("Show", True, key=f"show_{g}")
         color  = st.color_picker("Color", st.session_state[colour_key], key=colour_key)
-        symbol = st.selectbox(
-            "Symbol", predefined_symbols, key=symbol_key,
-            index=predefined_symbols.index(st.session_state[symbol_key])
-        )
-        size   = st.slider("Size (px)", 2, 40, defaults["size"], key=f"sz_{g}")
+        if t_val:
+            symbol = st.selectbox(
+                "Symbol", predefined_symbols, key=symbol_key,
+                index=predefined_symbols.index(st.session_state[symbol_key])
+            )
+            size = st.slider("Size (px)", 2, 40, defaults["size"], key=f"sz_{g}")
+        else:
+            symbol = None
+            size = defaults["size"]
         alpha  = st.slider("Opacity (%)", 10, 100, 90, key=f"op_{g}") / 100
         outline_color = st.color_picker("Outline color", "#000000", key=f"outline_{g}")
         outline_width = st.slider("Outline width", 1.0, 6.0, 1.0, 0.5, key=f"ow_{g}")
 
         # обновляем пользовательские карты
         color_map_user[group_str] = color
-        if group_str in symbol_map_user:
-            symbol_map_user[group_str] = symbol
-        if group_str in size_map_user:
-            size_map_user[group_str]   = size
+        if t_val:
+            symbol_map_user[t_val] = symbol
+            size_map_user[t_val]   = size
 
         styles[group_str] = {
             "color": color, "symbol": symbol, "size": size,
@@ -128,7 +159,7 @@ df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
 fig = px.scatter(
     plot_df,
     x=x_axis, y=y_axis,
-    color=plot_df["type_loc"].astype(str),          # оттенки по Location
+    color=plot_df[group_col].astype(str),
     symbol=plot_df["type"].astype(str),             # фигура по Type
     size=plot_df[size_col],
     color_discrete_map=color_map_user,
