@@ -1,49 +1,53 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import random
 import copy
+import random
 from typing import Dict, Any
-from styles import build_style_maps, AVAILABLE_SYMBOLS   # отдельный файл
+from styles import build_style_maps, AVAILABLE_SYMBOLS     # ваш файл
 
 st.set_page_config(page_title="Geochem Explorer", layout="wide")
 
-# ───────────────────────────────────────────────────────────────────
-# DATA
-# ───────────────────────────────────────────────────────────────────
+# ─── DATA ──────────────────────────────────────────────────────────
 @st.cache_data(ttl=3600)
 def load_csv(url: str) -> pd.DataFrame:
     return pd.read_csv(url)
 
 df = load_csv(st.secrets["CSV_URL"])
 
+# двойной ключ сразу в датафрейм
 df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
 
-# базовые карты из styles.py  → копии, которые можно править
+df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
+
+HIDDEN_COLS = {"type_loc"}                 # здесь перечисляем все «технические»
+VISIBLE_COLS = [c for c in df.columns if c not in HIDDEN_COLS]
+
+# базовые карты из styles.py
 base_color, base_symbol, base_size = build_style_maps(
     df, type_col="type", loc_col="Location"
 )
-color_map_user  = base_color.copy()
-symbol_map_user = base_symbol.copy()
-size_map_user   = base_size.copy()
+color_map_user  = base_color.copy()   # ключ: type|loc
+symbol_map_user = base_symbol.copy()  # ключ: type
+size_map_user   = base_size.copy()    # ключ: type
 
-# ───────────────────────────────────────────────────────────────────
-# DEFAULT AXES
-# ───────────────────────────────────────────────────────────────────
-DEFAULT_X = "MgO"    if "MgO"    in df.columns else df.columns[0]
-DEFAULT_Y = "d98Mo"  if "d98Mo"  in df.columns else df.columns[1]
-DEFAULT_GROUP = "type" if "type" in df.columns else df.columns[-1]
+# ─── AXES ──────────────────────────────────────────────────────────
+DEFAULT_X, DEFAULT_Y = ("MgO", "d98Mo") if {"MgO", "d98Mo"} <= set(df.columns) \
+                       else df.columns[:2]
+DEFAULT_GROUP = "type" if "type" in VISIBLE_COLS else VISIBLE_COLS[0]            # важно!
 
 def axis_selector(label: str, default: str) -> str:
     mode_key, col_key = f"{label}_mode", f"{label}_col"
     st.session_state.setdefault(mode_key, "Column")
     st.session_state.setdefault(col_key, default)
+
     mode = st.sidebar.radio(f"{label} mode", ["Column", "Ratio"], key=mode_key)
     if mode == "Column":
         return st.sidebar.selectbox(
-            f"{label} axis", df.columns, key=col_key,
+            f"{label} axis", VISIBLE_COLS, key=col_key,
             index=df.columns.get_loc(st.session_state[col_key])
         )
+
     num = st.sidebar.selectbox(f"{label} numerator", df.columns, key=f"{label}_num")
     den = st.sidebar.selectbox(f"{label} denominator", df.columns, key=f"{label}_den")
     ratio = f"{num}/{den}"
@@ -53,65 +57,51 @@ def axis_selector(label: str, default: str) -> str:
 
 x_axis = axis_selector("X", DEFAULT_X)
 y_axis = axis_selector("Y", DEFAULT_Y)
-log_x  = st.sidebar.checkbox("log X", key="log_x")
-log_y  = st.sidebar.checkbox("log Y", key="log_y")
+log_x  = st.sidebar.checkbox("log X")
+log_y  = st.sidebar.checkbox("log Y")
 
-# ───────────────────────────────────────────────────────────────────
-# SIDEBAR: per-group style editors
-# ───────────────────────────────────────────────────────────────────
+# ─── ГРУППЫ, ПОКАЗ/СКРЫТИЕ ────────────────────────────────────────
 group_col = st.sidebar.selectbox(
-    "Group by", df.columns, index=df.columns.get_loc(DEFAULT_GROUP)
+    "Group by (for filtering / hover)", VISIBLE_COLS,
+    index=df.columns.get_loc(DEFAULT_GROUP)
 )
 
-styles: Dict[str, Dict[str, Any]] = {}    # собираем выбор пользователя
-visible_groups = []
+plot_df = df.copy()
 
+# ─── РЕДАКТОР ЦВЕТА (type|Location)  ───────────────────────────────
+st.sidebar.markdown("---\n### Color & Trace style (type | Location)")
+styles: Dict[str, Dict[str, Any]] = {}         # для контура / прозрачности
+pre_symbols = AVAILABLE_SYMBOLS.copy()
 random.seed(42)
-predefined_symbols = AVAILABLE_SYMBOLS.copy()
 
-for g in sorted(df[group_col].dropna().unique()):
-    group_str = str(g)
-    defaults = {
-        "color":  color_map_user.get(group_str, "#1f77b4"),
-        "symbol": symbol_map_user.get(group_str, "circle"),
-        "size":   size_map_user.get(group_str, 20),
-    }
+for key in sorted(df["type_loc"].dropna().unique()):
+    typ = key.split("|")[0]                    # часть до «|»
+    with st.sidebar.expander(key, expanded=False):
+        # дефолты
+        cur_color  = color_map_user.get(key,  "#1f77b4")
+        cur_symbol = symbol_map_user.get(typ, "circle")
+        cur_size   = size_map_user.get(typ,   20)
 
-    colour_key, symbol_key = f"c_{g}", f"s_{g}"
-    st.session_state.setdefault(colour_key, defaults["color"])
-    st.session_state.setdefault(symbol_key, defaults["symbol"])
+        color  = st.color_picker("Color", cur_color, key=f"col_{key}")
+        sym_idx = pre_symbols.index(cur_symbol) if cur_symbol in pre_symbols else 0
+        symbol = st.selectbox("Symbol", pre_symbols, index=sym_idx, key=f"sym_{key}")
+        size   = st.slider("Size (px)", 2, 40, cur_size, key=f"sz_{key}")
+        alpha  = st.slider("Opacity (%)", 10, 100, 90, key=f"op_{key}") / 100
+        outcol = st.color_picker("Outline", "#000000", key=f"out_{key}")
+        outwid = st.slider("Outline width", 1.0, 6.0, 1.0, 0.5, key=f"ow_{key}")
 
-    with st.sidebar.expander(group_str, expanded=False):
-        show   = st.checkbox("Show", True, key=f"show_{g}")
-        color  = st.color_picker("Color", st.session_state[colour_key], key=colour_key)
-        symbol = st.selectbox(
-            "Symbol", predefined_symbols, key=symbol_key,
-            index=predefined_symbols.index(st.session_state[symbol_key])
-        )
-        size   = st.slider("Size (px)", 2, 40, defaults["size"], key=f"sz_{g}")
-        alpha  = st.slider("Opacity (%)", 10, 100, 90, key=f"op_{g}") / 100
-        outline_color = st.color_picker("Outline color", "#000000", key=f"outline_{g}")
-        outline_width = st.slider("Outline width", 1.0, 6.0, 1.0, 0.5, key=f"ow_{g}")
+        # обновляем рабочие карты
+        color_map_user[key]      = color
+        symbol_map_user[typ]     = symbol     # символ по type!
+        size_map_user[typ]       = size
 
-        # обновляем пользовательские карты
-        color_map_user[group_str] = color
-        if group_str in symbol_map_user:
-            symbol_map_user[group_str] = symbol
-        if group_str in size_map_user:
-            size_map_user[group_str]   = size
-
-        styles[group_str] = {
-            "color": color, "symbol": symbol, "size": size,
-            "opacity": alpha, "outline_color": outline_color,
-            "outline_width": outline_width,
+        styles[key] = {
+            "opacity": alpha,
+            "outline_color": outcol,
+            "outline_width": outwid,
         }
-        if show:
-            visible_groups.append(g)
 
-# ───────────────────────────────────────────────────────────────────
-# DATA SUBSET
-# ───────────────────────────────────────────────────────────────────
-plot_df = df[df[group_col].isin(visible_groups)].copy()
+# столбец размеров для Plotly (по type)
 size_col = "__marker_size"
 plot_df[size_col] = plot_df["type"].map(size_map_user).fillna(20)
 
@@ -119,17 +109,12 @@ bg_color = "#ffffff"
 font_color = "#000000"
 
 
-df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
-
-
-# ───────────────────────────────────────────────────────────────────
-# PLOT
-# ───────────────────────────────────────────────────────────────────
+# ─── PLOT ──────────────────────────────────────────────────────────
 fig = px.scatter(
     plot_df,
     x=x_axis, y=y_axis,
-    color=plot_df["type_loc"].astype(str),          # оттенки по Location
-    symbol=plot_df["type"].astype(str),             # фигура по Type
+    color=plot_df["type_loc"].astype(str),
+    symbol=plot_df["type"].astype(str),
     size=plot_df[size_col],
     color_discrete_map=color_map_user,
     symbol_map=symbol_map_user,
@@ -138,6 +123,16 @@ fig = px.scatter(
     height=650,
 )
 
+# обводка / прозрачность из styles
+for tr in fig.data:
+    st_dict = styles.get(tr.name, {})
+    tr.marker.line.color = st_dict.get("outline_color", "#000")
+    tr.marker.line.width = st_dict.get("outline_width", 1.0)
+    tr.marker.opacity    = st_dict.get("opacity", 0.9)
+
+fig.update_traces(marker=dict(sizemode="diameter", sizeref=2.0, sizemin=2))
+
+# лаконичный формат осей + фоны (можно оставить ваш прежний блок)
 fig.update_layout(
     plot_bgcolor=bg_color,
     paper_bgcolor=bg_color,
@@ -180,55 +175,22 @@ axis_style = dict(
 
 fig.update_xaxes(**axis_style)
 fig.update_yaxes(**axis_style)
-
-
-
-# convert chosen axis columns to numeric so Plotly treats them as continuous
-for _col in [x_axis, y_axis]:
-    if _col in df.columns:
-        df[_col] = pd.to_numeric(df[_col], errors="coerce")
-
-fig.update_traces(marker=dict(sizemode="diameter", sizeref=2.0, sizemin=2))
-
-# применяем обводку и прозрачность
-for tr in fig.data:
-    loc = str(tr.name)                 # имя trace = Location
-    st_dict = styles.get(loc, {})
-    tr.marker.line.color = st_dict.get("outline_color", "#000")
-    tr.marker.line.width = st_dict.get("outline_width", 1.0)
-    tr.marker.opacity    = st_dict.get("opacity", 0.9)
-
-
 st.plotly_chart(fig, use_container_width=True)
 
+# ─── DOWNLOADS ─────────────────────────────────────────────────────
 export_fig = copy.deepcopy(fig)
-export_fig.update_layout(
-    width=1200, height=800,
-    margin=dict(l=80, r=120, t=60, b=60),   # +180 px справа
-    showlegend=False,
-)
+export_fig.update_layout(width=1200, height=800,
+                         margin=dict(l=80, r=120, t=60, b=60),
+                         showlegend=False)
 
-# ── КНОПКИ СКАЧИВАНИЯ ─────────────────────────────────────────────
 col1, col2, col3 = st.columns(3)
-
 with col1:
-    st.download_button(
-        "Save plot (PNG)",
-        export_fig.to_image(format="png"),
-        file_name="plot.png"
-    )
-
+    st.download_button("Save plot (PNG)",
+        export_fig.to_image(format="png"), file_name="plot.png")
 with col2:
-    st.download_button(
-        "Save data (CSV)",
-        plot_df.to_csv(index=False),
-        file_name="data.csv"
-    )
-
+    st.download_button("Save data (CSV)",
+        plot_df.to_csv(index=False), file_name="data.csv")
 with col3:
-    st.download_button(
-        "Save plot (PDF)",
-        export_fig.to_image(format="pdf"),
-        file_name="plot.pdf",
-        mime="application/pdf"
-    )
+    st.download_button("Save plot (PDF)",
+        export_fig.to_image(format="pdf"), file_name="plot.pdf",
+        mime="application/pdf")
