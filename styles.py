@@ -93,7 +93,9 @@ def build_style_maps(
         for i, loc in enumerate(loc_values):
             v = 0.6 + 0.4 * (i / n)  # brightness 60‑100 %
             r, g, b = colorsys.hsv_to_rgb(h, s, v)
-            color_map[str(loc)] = _rgb_hex(r, g, b)
+            type_loc_key = f"{t_key}|{loc}"           # t_key = текущий type
+            color_map[type_loc_key] = _rgb_hex(r, g, b)
+
 
     # ensure every location has a colour (edge case if groupby filtered)
     for loc in df[loc_col].dropna().unique():
