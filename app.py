@@ -5,6 +5,8 @@ import copy
 import random
 from typing import Dict, Any
 from styles import build_style_maps, AVAILABLE_SYMBOLS     # ваш файл
+from utils import axis_selector
+
 
 st.set_page_config(page_title="Geochem Explorer", layout="wide")
 
@@ -31,27 +33,10 @@ DEFAULT_X, DEFAULT_Y = ("MgO", "d98Mo") if {"MgO", "d98Mo"} <= set(df.columns) \
                        else df.columns[:2]
 DEFAULT_GROUP = "type_loc"            # важно!
 
-def axis_selector(label: str, default: str) -> str:
-    mode_key, col_key = f"{label}_mode", f"{label}_col"
-    st.session_state.setdefault(mode_key, "Column")
-    st.session_state.setdefault(col_key, default)
 
-    mode = st.sidebar.radio(f"{label} mode", ["Column", "Ratio"], key=mode_key)
-    if mode == "Column":
-        return st.sidebar.selectbox(
-            f"{label} axis", df.columns, key=col_key,
-            index=df.columns.get_loc(st.session_state[col_key])
-        )
 
-    num = st.sidebar.selectbox(f"{label} numerator", df.columns, key=f"{label}_num")
-    den = st.sidebar.selectbox(f"{label} denominator", df.columns, key=f"{label}_den")
-    ratio = f"{num}/{den}"
-    if ratio not in df.columns:
-        df[ratio] = df[num] / df[den]
-    return ratio
-
-x_axis = axis_selector("X", DEFAULT_X)
-y_axis = axis_selector("Y", DEFAULT_Y)
+x_axis = axis_selector(df, "X", DEFAULT_X)
+y_axis = axis_selector(df, "Y", DEFAULT_Y)
 log_x  = st.sidebar.checkbox("log X")
 log_y  = st.sidebar.checkbox("log Y")
 
