@@ -41,12 +41,16 @@ def plot_demo_table(
             tr.marker.line.width = st_dict.get("outline_width", 1.0)
             tr.marker.opacity    = st_dict.get("opacity", 0.9)
     fig.update_traces(marker=dict(sizemode="diameter", sizeref=2.0, sizemin=2))
+    
     fig.update_layout(
+        xaxis_title=x_axis,
+        yaxis_title=y_axis,
         plot_bgcolor=bg_color,
         paper_bgcolor=bg_color,
         legend=dict(font=dict(color=font_color)),
         font=dict(color=font_color),
     )
+
     axis_style = dict(
         linecolor="#000000", mirror=True, showline=True,
         ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
@@ -54,8 +58,28 @@ def plot_demo_table(
         minor_showgrid=True, minor_gridwidth=0.5,
         minor_gridcolor="rgba(0,0,0,0.05)",
     )
-    fig.update_xaxes(**axis_style)
-    fig.update_yaxes(**axis_style)
+
+    fig.update_xaxes(
+        title_text=x_axis,
+        title_font=dict(size=18, color="#111111"),
+        tickfont=dict(size=14, color="#111111"),    # <--- ВАЖНО!
+        linecolor="#000000", mirror=True, showline=True,
+        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
+        gridcolor="rgba(0,0,0,0.15)",
+        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_gridcolor="rgba(0,0,0,0.05)",
+    )
+    fig.update_yaxes(
+        title_text=y_axis,
+        title_font=dict(size=18, color="#111111"),
+        tickfont=dict(size=14, color="#111111"),    # <--- ВАЖНО!
+        linecolor="#000000", mirror=True, showline=True,
+        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
+        gridcolor="rgba(0,0,0,0.15)",
+        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_gridcolor="rgba(0,0,0,0.05)",
+)
+
     return fig
 
 
@@ -111,10 +135,6 @@ def plot_user_table(
                 plot_args["symbol_map"] = symbol_map_user
         plot_args["hover_name"] = group_col
 
-    st.write("size_map_user:", size_map_user)
-    st.write("plot_df[[group_col, '__marker_size']].head(10):", plot_df[[group_col, "__marker_size"]].head(10))
-    st.write("color_series nunique:", color_series.nunique())
-    st.write("group counts:", plot_df[group_col].value_counts())
 
     fig = px.scatter(**plot_args)
 
@@ -133,12 +153,17 @@ def plot_user_table(
             # Не переопределяй marker.opacity тут!
 
     fig.update_traces(marker=dict(sizemode="diameter", sizeref=2.0, sizemin=2))
+   
     fig.update_layout(
-        plot_bgcolor=bg_color,
-        paper_bgcolor=bg_color,
-        legend=dict(font=dict(color=font_color)),
-        font=dict(color=font_color),
-    )
+            xaxis_title=x_axis,
+            yaxis_title=y_axis,
+            plot_bgcolor=bg_color,
+            paper_bgcolor=bg_color,
+            legend=dict(font=dict(color=font_color)),
+            font=dict(color=font_color),
+        )
+    
+
     axis_style = dict(
         linecolor="#000000", mirror=True, showline=True,
         ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
@@ -146,11 +171,26 @@ def plot_user_table(
         minor_showgrid=True, minor_gridwidth=0.5,
         minor_gridcolor="rgba(0,0,0,0.05)",
     )
-    fig.update_xaxes(**axis_style)
-    fig.update_yaxes(**axis_style)
-    
-    fig.update_xaxes(title_text=x_axis)
-    fig.update_yaxes(title_text=y_axis)
+    fig.update_xaxes(
+        title_text=x_axis,
+        title_font=dict(size=18, color="#111111"),
+        tickfont=dict(size=14, color="#111111"),    # <--- ВАЖНО!
+        linecolor="#000000", mirror=True, showline=True,
+        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
+        gridcolor="rgba(0,0,0,0.15)",
+        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_gridcolor="rgba(0,0,0,0.05)",
+    )
+    fig.update_yaxes(
+        title_text=y_axis,
+        title_font=dict(size=18, color="#111111"),
+        tickfont=dict(size=14, color="#111111"),    # <--- ВАЖНО!
+        linecolor="#000000", mirror=True, showline=True,
+        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
+        gridcolor="rgba(0,0,0,0.15)",
+        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_gridcolor="rgba(0,0,0,0.05)",
+    )
 
     return fig
 
