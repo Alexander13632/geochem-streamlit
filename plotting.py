@@ -148,5 +148,9 @@ def plot_user_table(
     )
     fig.update_xaxes(**axis_style)
     fig.update_yaxes(**axis_style)
+    
+    fig.update_xaxes(title_text=x_axis)
+    fig.update_yaxes(title_text=y_axis)
+
     return fig
 
