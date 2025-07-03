@@ -6,48 +6,108 @@ import random
 from typing import Dict, Any
 from styles import build_style_maps, AVAILABLE_SYMBOLS     # ваш файл
 from utils import axis_selector
+from plotting import plot_demo_table, plot_user_table
+from data_loader import get_dataframe
+from user_style import generate_group_styles, group_style_editor
 
 
 st.set_page_config(page_title="Geochem Explorer", layout="wide")
 
 # ─── DATA ──────────────────────────────────────────────────────────
-@st.cache_data(ttl=3600)
-def load_csv(url: str) -> pd.DataFrame:
-    return pd.read_csv(url)
+df, user_data = get_dataframe()
 
-df = load_csv(st.secrets["CSV_URL"])
+columns = list(df.columns)
 
-# двойной ключ сразу в датафрейм
-df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
+# --- Если есть колонки "type" и "Location" ---
+if "type" in df.columns and "Location" in df.columns:
+    df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
+    base_color, base_symbol, base_size = build_style_maps(
+        df, type_col="type", loc_col="Location"
+    )
+    color_map_user  = base_color.copy()
+    symbol_map_user = base_symbol.copy()
+    size_map_user   = base_size.copy()
+else:
+    df["type_loc"] = ""
+    color_map_user  = {}
+    symbol_map_user = {}
+    size_map_user   = {}
 
-# базовые карты из styles.py
-base_color, base_symbol, base_size = build_style_maps(
-    df, type_col="type", loc_col="Location"
-)
-color_map_user  = base_color.copy()   # ключ: type|loc
-symbol_map_user = base_symbol.copy()  # ключ: type
-size_map_user   = base_size.copy()    # ключ: type
+# --- Селекторы осей и группировки ---
+if user_data:
+    # Для пользовательских данных селекторы пустые (выбор только вручную)
+    x_axis = st.sidebar.selectbox("Axis X", [""] + columns, index=0)
+    y_axis = st.sidebar.selectbox("Axis Y", [""] + columns, index=0)
+    group_col = st.sidebar.selectbox("Grouping variable", [""] + columns, index=0)
+else:
+    # Для дефолтных данных — как было!
+    default_x = "MgO" if "MgO" in columns else (columns[0] if columns else "")
+    default_y = "d98Mo" if "d98Mo" in columns else (columns[1] if len(columns) > 1 else "")
+    default_group = "type_loc" if "type_loc" in columns else ""
+    x_axis = st.sidebar.selectbox("Axis X", columns, index=columns.index(default_x) if default_x in columns else 0)
+    y_axis = st.sidebar.selectbox("Axis Y", columns, index=columns.index(default_y) if default_y in columns else 0)
+    group_col = st.sidebar.selectbox("Grouping variable", [""] + columns, index=([""] + columns).index(default_group) if default_group in columns else 0)
 
-# ─── AXES ──────────────────────────────────────────────────────────
-DEFAULT_X, DEFAULT_Y = ("MgO", "d98Mo") if {"MgO", "d98Mo"} <= set(df.columns) \
-                       else df.columns[:2]
-DEFAULT_GROUP = "type_loc"            # важно!
-
-
-
-x_axis = axis_selector(df, "X", DEFAULT_X)
-y_axis = axis_selector(df, "Y", DEFAULT_Y)
 log_x  = st.sidebar.checkbox("log X")
 log_y  = st.sidebar.checkbox("log Y")
 
-# ─── ГРУППЫ, ПОКАЗ/СКРЫТИЕ ────────────────────────────────────────
-group_col = st.sidebar.selectbox(
-    "Group by (for hover-labels)", df.columns,
-    index=df.columns.get_loc(DEFAULT_GROUP)
-)
-
+if not x_axis or not y_axis:
+    st.warning("Please select both X and Y axes to plot.")
+    st.stop()
 
 plot_df = df.copy()
+bg_color = "#ffffff"
+font_color = "#000000"
+
+if not user_data:
+    st.sidebar.markdown("---\n### Color & Trace style (type | Location)")
+    styles: Dict[str, Dict[str, Any]] = {}
+    pre_symbols = AVAILABLE_SYMBOLS.copy()
+    random.seed(42)
+    for key in sorted(df["type_loc"].dropna().unique()):
+        typ = key.split("|")[0]
+        with st.sidebar.expander(key, expanded=False):
+            cur_color  = color_map_user.get(key,  "#1f77b4")
+            cur_symbol = symbol_map_user.get(typ, "circle")
+            cur_size   = size_map_user.get(typ,   20)
+            # Вот здесь меняешь ключи!
+            color  = st.color_picker("Color", cur_color, key=f"demo_col_{key}")
+            sym_idx = pre_symbols.index(cur_symbol) if cur_symbol in pre_symbols else 0
+            symbol = st.selectbox("Symbol", pre_symbols, index=sym_idx, key=f"demo_sym_{key}")
+            size   = st.slider("Size (px)", 2, 80, cur_size, key=f"demo_sz_{key}")
+            alpha  = st.slider("Opacity (%)", 10, 100, 90, key=f"demo_op_{key}") / 100
+            outcol = st.color_picker("Outline", "#000000", key=f"demo_out_{key}")
+            outwid = st.slider("Outline width", 1.0, 6.0, 1.0, 0.5, key=f"demo_ow_{key}")
+
+            color_map_user[key]      = color
+            symbol_map_user[typ]     = symbol
+            size_map_user[typ]       = size
+            styles[key] = {
+                "opacity": alpha,
+                "outline_color": outcol,
+                "outline_width": outwid,
+            }
+
+elif user_data and group_col and group_col in plot_df.columns and group_col != "":
+    plot_df[group_col] = plot_df[group_col].astype(str)
+    st.sidebar.markdown(f"---\n### Color & Trace style ({group_col})")
+    unique_groups = plot_df[group_col].dropna().unique()
+    color_map_user, symbol_map_user = generate_group_styles(unique_groups)
+    # --- добавь новые пустые карты для размера и прозрачности ---
+    size_map_user = {g: 20 for g in unique_groups}
+    opacity_map_user = {g: 0.9 for g in unique_groups}
+    color_map_user, symbol_map_user, size_map_user, opacity_map_user = group_style_editor(
+        unique_groups, color_map_user, symbol_map_user, size_map_user, opacity_map_user
+    )
+
+
+
+
+else:
+    # Если не выбрана группирующая переменная — просто дефолтные стили
+    color_map_user, symbol_map_user = {}, {}
+    styles = {}
+
 
 # ─── РЕДАКТОР ЦВЕТА (type|Location)  ───────────────────────────────
 st.sidebar.markdown("---\n### Color & Trace style (type | Location)")
@@ -66,7 +126,7 @@ for key in sorted(df["type_loc"].dropna().unique()):
         color  = st.color_picker("Color", cur_color, key=f"col_{key}")
         sym_idx = pre_symbols.index(cur_symbol) if cur_symbol in pre_symbols else 0
         symbol = st.selectbox("Symbol", pre_symbols, index=sym_idx, key=f"sym_{key}")
-        size   = st.slider("Size (px)", 2, 40, cur_size, key=f"sz_{key}")
+        size   = st.slider("Size (px)", 2, 80, cur_size, key=f"sz_{key}")
         alpha  = st.slider("Opacity (%)", 10, 100, 90, key=f"op_{key}") / 100
         outcol = st.color_picker("Outline", "#000000", key=f"out_{key}")
         outwid = st.slider("Outline width", 1.0, 6.0, 1.0, 0.5, key=f"ow_{key}")
@@ -82,79 +142,31 @@ for key in sorted(df["type_loc"].dropna().unique()):
             "outline_width": outwid,
         }
 
-# столбец размеров для Plotly (по type)
-size_col = "__marker_size"
-plot_df[size_col] = plot_df["type"].map(size_map_user).fillna(20)
-
-bg_color = "#ffffff"
-font_color = "#000000"
-
-# ─── PLOT ──────────────────────────────────────────────────────────
-fig = px.scatter(
-    plot_df,
-    x=x_axis, y=y_axis,
-    color=plot_df["type_loc"].astype(str),
-    symbol=plot_df["type"].astype(str),
-    size=plot_df[size_col],
-    color_discrete_map=color_map_user,
-    symbol_map=symbol_map_user,
-    hover_name=group_col,
-    log_x=log_x, log_y=log_y,
-    height=650,
-)
-
-# обводка / прозрачность из styles
-for tr in fig.data:
-    st_dict = styles.get(tr.name, {})
-    tr.marker.line.color = st_dict.get("outline_color", "#000")
-    tr.marker.line.width = st_dict.get("outline_width", 1.0)
-    tr.marker.opacity    = st_dict.get("opacity", 0.9)
-
-fig.update_traces(marker=dict(sizemode="diameter", sizeref=2.0, sizemin=2))
-
-# лаконичный формат осей + фоны (можно оставить ваш прежний блок)
-fig.update_layout(
-    plot_bgcolor=bg_color,
-    paper_bgcolor=bg_color,
-    legend=dict(
-        font=dict(color=font_color)
-    ),
-    font=dict(color=font_color),
-)
 
 
-fig.update_xaxes(
-    title_font=dict(color=font_color),
-    tickfont=dict(color=font_color),
-    linecolor=font_color,
-    gridcolor="rgba(0,0,0,0.12)",
-    zerolinecolor=font_color
-)
-fig.update_yaxes(
-    title_font=dict(color=font_color),
-    tickfont=dict(color=font_color),
-    linecolor=font_color,
-    gridcolor="rgba(0,0,0,0.12)",
-    zerolinecolor=font_color
-)
+if not user_data:
+    fig = plot_demo_table(
+        df=plot_df,
+        x_axis=x_axis, y_axis=y_axis,
+        color_map_user=color_map_user,
+        symbol_map_user=symbol_map_user,
+        size_map_user=size_map_user,
+        log_x=log_x, log_y=log_y,
+        styles=styles,
+        bg_color=bg_color, font_color=font_color
+    )
+else:
+    fig = plot_user_table(
+        df=plot_df,
+        x_axis=x_axis, y_axis=y_axis,
+        group_col=group_col,
+        color_map_user=color_map_user,
+        symbol_map_user=symbol_map_user,   # <-- вот здесь!
+        log_x=log_x, log_y=log_y,
+        styles=styles,
+        bg_color=bg_color, font_color=font_color
+    )
 
-# ▸ сразу после fig = px.scatter(...)  (или после update_layout)
-
-axis_style = dict(
-    linecolor="#000000",          # основная линия оси
-    mirror=True, showline=True,   # рисовать «рамку»
-    ticks="inside",               # насечки внутрь поля
-    ticklen=6,                    # длина насечки, px
-    tickwidth=1,                  # толщина линии
-    tickcolor="#000000",          # цвет насечки
-    gridcolor="rgba(0,0,0,0.15)",     # крупная сетка
-    minor_showgrid=True,
-    minor_gridwidth=0.5,
-    minor_gridcolor="rgba(0,0,0,0.05)",
-)
-
-fig.update_xaxes(**axis_style)
-fig.update_yaxes(**axis_style)
 
 st.plotly_chart(fig, use_container_width=True)
 
