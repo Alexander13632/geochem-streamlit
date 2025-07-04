@@ -84,7 +84,7 @@ def plot_demo_table(
 
 
 def plot_user_table(
-    df, x_axis, y_axis, group_col,
+    df, x_axis, y_axis, group_for_plot,
     color_map_user=None, symbol_map_user=None,
     size_map_user=None, opacity_map_user=None,
     log_x=False, log_y=False,
@@ -93,18 +93,18 @@ def plot_user_table(
     plot_df = df.copy()
 
     # ВАЖНО: Сначала приводи к строке!
-    if group_col and group_col in plot_df.columns:
-        plot_df[group_col] = plot_df[group_col].astype(str)
-        color_series = plot_df[group_col]
-        symbol_series = plot_df[group_col]
+    if group_for_plot and group_for_plot in plot_df.columns:
+        plot_df[group_for_plot] = plot_df[group_for_plot].astype(str)
+        color_series = plot_df[group_for_plot]
+        symbol_series = plot_df[group_for_plot]
         # Индивидуальный размер для каждой группы
         if size_map_user:
-            plot_df["__marker_size"] = plot_df[group_col].map(size_map_user).fillna(20)
+            plot_df["__marker_size"] = plot_df[group_for_plot].map(size_map_user).fillna(20)
         else:
             plot_df["__marker_size"] = 20
         # Индивидуальная прозрачность для каждой группы
         if opacity_map_user:
-            plot_df["__marker_opacity"] = plot_df[group_col].map(opacity_map_user).fillna(0.9)
+            plot_df["__marker_opacity"] = plot_df[group_for_plot].map(opacity_map_user).fillna(0.9)
         else:
             plot_df["__marker_opacity"] = 0.9
     else:
@@ -124,22 +124,22 @@ def plot_user_table(
         size_max=80,  # увеличь max если надо
     )
 
-    if group_col and group_col in plot_df.columns:
+    if group_for_plot and group_for_plot in plot_df.columns:
         plot_args["color"] = color_series
         if color_map_user:
             plot_args["color_discrete_map"] = color_map_user
         # Символы работают только для ограниченного числа групп (<15)
-        if plot_df[group_col].nunique() < 15:
+        if plot_df[group_for_plot].nunique() < 15:
             plot_args["symbol"] = symbol_series
             if symbol_map_user:
                 plot_args["symbol_map"] = symbol_map_user
-        plot_args["hover_name"] = group_col
+        plot_args["hover_name"] = group_for_plot
 
 
     fig = px.scatter(**plot_args)
 
     # Установка индивидуальной прозрачности
-    if opacity_map_user and group_col and group_col in plot_df.columns:
+    if opacity_map_user and group_for_plot and group_for_plot in plot_df.columns:
         for tr in fig.data:
             group = tr.name
             tr.marker.opacity = opacity_map_user.get(group, 0.9)
@@ -193,4 +193,84 @@ def plot_user_table(
     )
 
     return fig
+
+def plot_box_plot(
+        df,
+        x: str,
+        y: str,
+        color: str | None = None,
+        color_map: dict | None = None,
+        symbol_map: dict | None = None,
+        size_map: dict | None = None,
+        opacity_map: dict | None = None,
+        outline_color_map: dict | None = None,
+        outline_width_map: dict | None = None,
+        bg_color: str = "#ffffff",
+        font_color: str = "#000000",
+):
+
+
+    fig = px.box(
+        df,
+        x=x,
+        y=y,
+        color=color if color else x,
+        points="all",
+        notched=False,
+        height=650,
+        color_discrete_map=color_map or {},
+        width=None,
+    )
+
+    # 2️⃣ Перебор трэйсов и кастомизация точек по группам
+    for trace in fig.data:
+        group = trace.name
+        marker_args = {}
+        if symbol_map and group in symbol_map:
+            marker_args['symbol'] = symbol_map[group]
+        if size_map and group in size_map:
+            marker_args['size'] = size_map[group]
+        if opacity_map and group in opacity_map:
+            marker_args['opacity'] = opacity_map[group]
+        if outline_color_map and group in outline_color_map:
+            marker_args.setdefault('line', {})['color'] = outline_color_map[group]
+        if outline_width_map and group in outline_width_map:
+            marker_args.setdefault('line', {})['width'] = outline_width_map[group]
+        trace.update(
+            marker=marker_args,
+            jitter=0.3,
+            pointpos=0,
+            line=dict(width=1.5),
+            whiskerwidth=0.4,
+            width=0.4,
+        )
+
+    # 3️⃣ оси, сетка, шрифты
+    axis_style = dict(
+        linecolor="#000", mirror=True, showline=True,
+        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000",
+        gridcolor="rgba(0,0,0,0.12)",
+        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_gridcolor="rgba(0,0,0,0.05)",
+        title_font=dict(size=18, color=font_color),
+        tickfont=dict(size=14, color=font_color),
+    )
+    fig.update_xaxes(**axis_style, tickangle=45)
+    fig.update_yaxes(**axis_style)
+
+    fig.update_layout(
+        boxmode="group",
+        plot_bgcolor=bg_color,
+        paper_bgcolor=bg_color,
+        legend=dict(font=dict(size=14, color=font_color)),
+        font=dict(color=font_color, size=16),
+        xaxis_title=x,
+        yaxis_title=y,
+        margin=dict(l=80, r=60, t=40, b=100),
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+    return fig
+
+
 
