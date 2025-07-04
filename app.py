@@ -6,17 +6,29 @@ import random
 from typing import Dict, Any
 from styles import build_style_maps, AVAILABLE_SYMBOLS     # ваш файл
 from utils import axis_selector
-from plotting import plot_demo_table, plot_user_table
+from plotting import plot_demo_table, plot_user_table, plot_box_plot
 from data_loader import get_dataframe
 from user_style import generate_group_styles, group_style_editor
+from binning import binning_widget
 
 
 st.set_page_config(page_title="Geochem Explorer", layout="wide")
+
+
 
 # ─── DATA ──────────────────────────────────────────────────────────
 df, user_data = get_dataframe()
 
 columns = list(df.columns)
+
+
+# ─── SIDEBAR ──────────────────────────────────────────────────────
+plot_type = st.sidebar.selectbox(
+    "Plot type",
+    ["Scatter plot", "Box plot"],   # можно будет добавить другие типы позже
+    index=0
+)
+
 
 # --- Если есть колонки "type" и "Location" ---
 if "type" in df.columns and "Location" in df.columns:
@@ -50,6 +62,14 @@ else:
 
 log_x  = st.sidebar.checkbox("log X")
 log_y  = st.sidebar.checkbox("log Y")
+
+bin_col, bin_labels = binning_widget(df, group_col)
+if bin_col:
+    group_for_plot = bin_col
+else:
+    group_for_plot = group_col
+
+
 
 if not x_axis or not y_axis:
     st.warning("Please select both X and Y axes to plot.")
@@ -88,10 +108,10 @@ if not user_data:
                 "outline_width": outwid,
             }
 
-elif user_data and group_col and group_col in plot_df.columns and group_col != "":
-    plot_df[group_col] = plot_df[group_col].astype(str)
-    st.sidebar.markdown(f"---\n### Color & Trace style ({group_col})")
-    unique_groups = plot_df[group_col].dropna().unique()
+elif user_data and group_for_plot and group_for_plot in plot_df.columns and group_for_plot != "":
+    plot_df[group_for_plot] = plot_df[group_for_plot].astype(str)
+    st.sidebar.markdown(f"---\n### Color & Trace style ({group_for_plot})")
+    unique_groups = plot_df[group_for_plot].dropna().unique()
     color_map_user, symbol_map_user = generate_group_styles(unique_groups)
     # --- добавь новые пустые карты для размера и прозрачности ---
     size_map_user = {g: 20 for g in unique_groups}
@@ -144,29 +164,45 @@ for key in sorted(df["type_loc"].dropna().unique()):
 
 
 
-if not user_data:
-    fig = plot_demo_table(
-        df=plot_df,
-        x_axis=x_axis, y_axis=y_axis,
-        color_map_user=color_map_user,
-        symbol_map_user=symbol_map_user,
-        size_map_user=size_map_user,
-        log_x=log_x, log_y=log_y,
-        styles=styles,
-        bg_color=bg_color, font_color=font_color
-    )
+if plot_type == "Scatter plot":
+    if not user_data:
+        fig = plot_demo_table(
+            df=plot_df,
+            x_axis=x_axis, y_axis=y_axis,
+            color_map_user=color_map_user,
+            symbol_map_user=symbol_map_user,
+            size_map_user=size_map_user,
+            log_x=log_x, log_y=log_y,
+            styles=styles,
+            bg_color=bg_color, font_color=font_color
+        )
+    else:
+        fig = plot_user_table(
+            df=plot_df,
+            x_axis=x_axis, y_axis=y_axis,
+            group_col=group_for_plot,
+            color_map_user=color_map_user,
+            symbol_map_user=symbol_map_user,
+            log_x=log_x, log_y=log_y,
+            styles=styles,
+            bg_color=bg_color, font_color=font_color
+        )
+elif plot_type == "Box plot":
+    # Группировка нужна обязательно!
+    if group_for_plot and group_for_plot in plot_df.columns:
+        fig = plot_box_plot(
+            df=plot_df,
+            x="type_loc", y=y_axis,
+            color="type_loc",
+            color_map = color_map_user,
+            bg_color=bg_color, font_color=font_color
+        )
+    else:
+        st.warning("Please select a grouping variable to build a box plot.")
+        st.stop()
 else:
-    fig = plot_user_table(
-        df=plot_df,
-        x_axis=x_axis, y_axis=y_axis,
-        group_col=group_col,
-        color_map_user=color_map_user,
-        symbol_map_user=symbol_map_user,   # <-- вот здесь!
-        log_x=log_x, log_y=log_y,
-        styles=styles,
-        bg_color=bg_color, font_color=font_color
-    )
-
+    st.warning("Unknown plot type selected.")
+    st.stop()
 
 st.plotly_chart(fig, use_container_width=True)
 
