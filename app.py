@@ -1,4 +1,5 @@
 import streamlit as st
+import json
 import pandas as pd
 import plotly.express as px
 import copy
@@ -10,6 +11,7 @@ from plotting import plot_demo_table, plot_user_table, plot_box_plot
 from data_loader import get_dataframe
 from user_style import generate_group_styles, group_style_editor
 from binning import binning_widget
+from save_style_to_json import export_style
 
 
 st.set_page_config(page_title="Geochem Explorer", layout="wide")
@@ -20,6 +22,10 @@ st.set_page_config(page_title="Geochem Explorer", layout="wide")
 df, user_data = get_dataframe()
 
 columns = list(df.columns)
+
+# JSON
+uploaded_style = st.sidebar.file_uploader("Загрузить стиль (JSON)", type=["json"], key="style_file")
+styles: Dict[str, Dict[str, Any]] = {}               # <<< NEW >>>  инициализируем один раз
 
 
 # ─── SIDEBAR ──────────────────────────────────────────────────────
@@ -81,7 +87,7 @@ font_color = "#000000"
 
 if not user_data:
     st.sidebar.markdown("---\n### Color & Trace style (type | Location)")
-    styles: Dict[str, Dict[str, Any]] = {}
+    
     pre_symbols = AVAILABLE_SYMBOLS.copy()
     random.seed(42)
     for key in sorted(df["type_loc"].dropna().unique()):
@@ -103,7 +109,10 @@ if not user_data:
             symbol_map_user[typ]     = symbol
             size_map_user[typ]       = size
             styles[key] = {
-                "opacity": alpha,
+                "color"        : color,
+                "symbol"       : symbol,
+                "size"         : size,
+                "opacity"      : alpha,
                 "outline_color": outcol,
                 "outline_width": outwid,
             }
@@ -120,47 +129,61 @@ elif user_data and group_for_plot and group_for_plot in plot_df.columns and grou
         unique_groups, color_map_user, symbol_map_user, size_map_user, opacity_map_user
     )
 
-
-
+    styles = {
+        g: {
+            "color"   : color_map_user[g],
+            "symbol"  : symbol_map_user[g],
+            "size"    : size_map_user[g],
+            "opacity" : opacity_map_user[g],
+        }
+        for g in unique_groups
+    }
 
 else:
-    # Если не выбрана группирующая переменная — просто дефолтные стили
-    color_map_user, symbol_map_user = {}, {}
+    # нет группировки — пустой стиль
     styles = {}
 
+opacity_map_user = {}   # <- чтобы был всегда, даже если не user_data
 
-# ─── РЕДАКТОР ЦВЕТА (type|Location)  ───────────────────────────────
-st.sidebar.markdown("---\n### Color & Trace style (type | Location)")
-styles: Dict[str, Dict[str, Any]] = {}         # для контура / прозрачности
-pre_symbols = AVAILABLE_SYMBOLS.copy()
-random.seed(42)
+# ─── ЗАГРУЗКА ФАЙЛА ─────────────────────────────────────────────
+if uploaded_style is not None:
+    try:
+        styles = json.load(uploaded_style)          # файл-объект -> dict
 
-for key in sorted(df["type_loc"].dropna().unique()):
-    typ = key.split("|")[0]                    # часть до «|»
-    with st.sidebar.expander(key, expanded=False):
-        # дефолты
-        cur_color  = color_map_user.get(key,  "#1f77b4")
-        cur_symbol = symbol_map_user.get(typ, "circle")
-        cur_size   = size_map_user.get(typ,   20)
+        # --- ⬇︎ РАСПАРСИВАЕМ И ПРИМЕНЯЕМ СТИЛИ ------------------
+        for key, attrs in styles.items():
+            # ☐ Цвет (ключ — всегда полный «type|Location» или имя группы)
+            if "color" in attrs:
+                color_map_user[key] = attrs["color"]
 
-        color  = st.color_picker("Color", cur_color, key=f"col_{key}")
-        sym_idx = pre_symbols.index(cur_symbol) if cur_symbol in pre_symbols else 0
-        symbol = st.selectbox("Symbol", pre_symbols, index=sym_idx, key=f"sym_{key}")
-        size   = st.slider("Size (px)", 2, 80, cur_size, key=f"sz_{key}")
-        alpha  = st.slider("Opacity (%)", 10, 100, 90, key=f"op_{key}") / 100
-        outcol = st.color_picker("Outline", "#000000", key=f"out_{key}")
-        outwid = st.slider("Outline width", 1.0, 6.0, 1.0, 0.5, key=f"ow_{key}")
+            # ☐ Символ / размер: для демо-режима берём только «type»
+            typ = key.split("|")[0] if not user_data else key
+            if "symbol" in attrs:
+                symbol_map_user[typ] = attrs["symbol"]
+            if "size" in attrs:
+                size_map_user[typ] = attrs["size"]
 
-        # обновляем рабочие карты
-        color_map_user[key]      = color
-        symbol_map_user[typ]     = symbol     # символ по type!
-        size_map_user[typ]       = size
+            # ☐ Прозрачность
+            if "opacity" in attrs:
+                opacity_map_user[key] = attrs["opacity"]
+        # ---------------------------------------------------------
 
-        styles[key] = {
-            "opacity": alpha,
-            "outline_color": outcol,
-            "outline_width": outwid,
-        }
+        st.success("Стиль загружен!")
+    except Exception as e:
+        st.error(f"Не удалось загрузить стиль: {e}")
+
+
+
+# ─── КНОПКА «СОХРАНИТЬ» ─────────────────────────────────────────
+json_bytes = json.dumps(styles, indent=2).encode("utf-8")
+st.sidebar.download_button(
+    "💾 Сохранить стиль (JSON)",
+    data=json_bytes,
+    file_name="style.json",
+    mime="application/json",
+    use_container_width=True,
+)
+
 
 
 
@@ -180,9 +203,10 @@ if plot_type == "Scatter plot":
         fig = plot_user_table(
             df=plot_df,
             x_axis=x_axis, y_axis=y_axis,
-            group_col=group_for_plot,
+            group_for_plot=group_for_plot,
             color_map_user=color_map_user,
             symbol_map_user=symbol_map_user,
+            size_map_user=size_map_user,
             log_x=log_x, log_y=log_y,
             styles=styles,
             bg_color=bg_color, font_color=font_color
@@ -205,6 +229,8 @@ else:
     st.stop()
 
 st.plotly_chart(fig, use_container_width=True)
+
+
 
 # ─── DOWNLOADS ─────────────────────────────────────────────────────
 export_fig = copy.deepcopy(fig)
