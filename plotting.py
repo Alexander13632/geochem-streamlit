@@ -3,16 +3,26 @@ import streamlit as st
 
 def plot_demo_table(
     df, x_axis, y_axis,
+    group_for_plot,                 # ← новый аргумент
     color_map_user, symbol_map_user, size_map_user,
     log_x=False, log_y=False,
-    styles=None, bg_color="#ffffff", font_color="#000000"
+    styles=None,
+    bg_color="#ffffff", font_color="#000000"
 ):
+    # 1) копия исходного DataFrame
     plot_df = df.copy()
+
+    # 2) определяем колонку группировки
+    grp = group_for_plot or "type_loc"
+    if grp not in plot_df.columns:
+        raise ValueError(f"Column '{grp}' not found in DataFrame")
+
+    # 3) выбрасываем строки без группового значения
+    plot_df = plot_df[plot_df[grp].notna()].copy()
+
+    # ---------- далее идёт остальной код, который уже был ----------
     size_col = "__marker_size"
-    if "type" in plot_df.columns:
-        plot_df[size_col] = plot_df["type"].map(size_map_user).fillna(20)
-    else:
-        plot_df[size_col] = 20
+    plot_df[size_col] = plot_df[grp].map(size_map_user).fillna(5)
 
     plot_args = dict(
         x=x_axis,
@@ -20,27 +30,26 @@ def plot_demo_table(
         data_frame=plot_df,
         log_x=log_x,
         log_y=log_y,
-        height=650
+        height=650,
+        color              = plot_df[grp].astype(str),
+        color_discrete_map = color_map_user,
+        symbol             = plot_df[grp].astype(str),
+        symbol_map         = symbol_map_user,
+        size               = plot_df[size_col],
+        hover_name         = grp,
     )
-    if "type_loc" in plot_df.columns:
-        plot_args["color"] = plot_df["type_loc"].astype(str)
-        plot_args["color_discrete_map"] = color_map_user
-    if "type" in plot_df.columns:
-        plot_args["symbol"] = plot_df["type"].astype(str)
-        plot_args["symbol_map"] = symbol_map_user
-    if size_col in plot_df.columns:
-        plot_args["size"] = plot_df[size_col]
-    if "type_loc" in plot_df.columns:
-        plot_args["hover_name"] = "type_loc"
 
-    fig = px.scatter(**plot_args)
+    fig = px.scatter(**plot_args, size_max=20)
+
+    #------------------------------------------------------------------
+    # 4) Применяем outline, opacity и пр.
+    #------------------------------------------------------------------
     if styles:
         for tr in fig.data:
             st_dict = styles.get(tr.name, {})
             tr.marker.line.color = st_dict.get("outline_color", "#000")
             tr.marker.line.width = st_dict.get("outline_width", 1.0)
             tr.marker.opacity    = st_dict.get("opacity", 0.9)
-    fig.update_traces(marker=dict(sizemode="diameter", sizeref=2.0, sizemin=2))
     
     fig.update_layout(
         xaxis_title=x_axis,
@@ -110,7 +119,7 @@ def plot_user_table(
     else:
         color_series = None
         symbol_series = None
-        plot_df["__marker_size"] = 20
+        plot_df["__marker_size"] = 10
         plot_df["__marker_opacity"] = 0.9
 
     plot_args = dict(
@@ -136,7 +145,7 @@ def plot_user_table(
         plot_args["hover_name"] = group_for_plot
 
 
-    fig = px.scatter(**plot_args)
+    fig = px.scatter(**plot_args, size_max=20)
 
     # Установка индивидуальной прозрачности
     if opacity_map_user and group_for_plot and group_for_plot in plot_df.columns:
