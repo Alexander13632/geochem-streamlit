@@ -39,7 +39,10 @@ def plot_demo_table(
         hover_name         = grp,
     )
 
-    fig = px.scatter(**plot_args, size_max=20)
+    fig = px.scatter(**plot_args)          # без size_max !
+    fig.update_traces(
+    marker=dict(sizemode="diameter", sizeref=1, sizemin=7)
+)
 
     #------------------------------------------------------------------
     # 4) Применяем outline, opacity и пр.
