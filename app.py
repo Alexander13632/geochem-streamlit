@@ -12,7 +12,7 @@ from data_loader import get_dataframe
 from user_style import generate_group_styles, group_style_editor
 from binning import binning_widget
 from save_style_to_json import export_style
-
+from editors import inherit_styles_from_typeloc
 
 st.set_page_config(page_title="Geochem Explorer", layout="wide")
 
@@ -26,6 +26,7 @@ columns = list(df.columns)
 # JSON
 uploaded_style = st.sidebar.file_uploader("Загрузить стиль (JSON)", type=["json"], key="style_file")
 styles: Dict[str, Dict[str, Any]] = {}               # <<< NEW >>>  инициализируем один раз
+
 
 
 # ─── SIDEBAR ──────────────────────────────────────────────────────
@@ -85,6 +86,51 @@ plot_df = df.copy()
 bg_color = "#ffffff"
 font_color = "#000000"
 
+
+
+# ─── СБОР СТИЛЕЙ ДЛЯ ВЫБРАННОЙ ГРУППЫ ────────────────────────────
+def build_group_style(df, group_for_plot,
+                      base_color, base_symbol, base_size):
+    """Карта стилей для любой группировки."""
+    if group_for_plot == "type_loc":
+        # используем уже готовые карты
+        return base_color.copy(), base_symbol.copy(), base_size.copy()
+    # иначе наследуем из type|Location
+    return inherit_styles_from_typeloc(
+        df, group_for_plot,
+        base_color, base_symbol, base_size
+    )
+
+# ---------- универсальный блок ----------
+if group_for_plot:                   # выбран столбец группировки
+    color_map_user, symbol_map_user, size_map_user = build_group_style(
+        df, group_for_plot,
+        base_color, base_symbol, base_size
+    )
+    opacity_map_user = {g: 0.9 for g in color_map_user}
+
+    st.sidebar.markdown(f"---\n### Color & Trace style ({group_for_plot})")
+    color_map_user, symbol_map_user, size_map_user, opacity_map_user = group_style_editor(
+        list(color_map_user.keys()),
+        color_map_user, symbol_map_user,
+        size_map_user, opacity_map_user
+    )
+
+    styles = {
+        g: {
+            "color"  : color_map_user[g],
+            "symbol" : symbol_map_user[g],
+            "size"   : size_map_user[g],
+            "opacity": opacity_map_user[g],
+        }
+        for g in color_map_user
+    }
+else:
+    styles = {}
+
+
+
+
 if not user_data:
     st.sidebar.markdown("---\n### Color & Trace style (type | Location)")
     
@@ -117,31 +163,6 @@ if not user_data:
                 "outline_width": outwid,
             }
 
-elif user_data and group_for_plot and group_for_plot in plot_df.columns and group_for_plot != "":
-    plot_df[group_for_plot] = plot_df[group_for_plot].astype(str)
-    st.sidebar.markdown(f"---\n### Color & Trace style ({group_for_plot})")
-    unique_groups = plot_df[group_for_plot].dropna().unique()
-    color_map_user, symbol_map_user = generate_group_styles(unique_groups)
-    # --- добавь новые пустые карты для размера и прозрачности ---
-    size_map_user = {g: 20 for g in unique_groups}
-    opacity_map_user = {g: 0.9 for g in unique_groups}
-    color_map_user, symbol_map_user, size_map_user, opacity_map_user = group_style_editor(
-        unique_groups, color_map_user, symbol_map_user, size_map_user, opacity_map_user
-    )
-
-    styles = {
-        g: {
-            "color"   : color_map_user[g],
-            "symbol"  : symbol_map_user[g],
-            "size"    : size_map_user[g],
-            "opacity" : opacity_map_user[g],
-        }
-        for g in unique_groups
-    }
-
-else:
-    # нет группировки — пустой стиль
-    styles = {}
 
 opacity_map_user = {}   # <- чтобы был всегда, даже если не user_data
 
@@ -192,6 +213,7 @@ if plot_type == "Scatter plot":
         fig = plot_demo_table(
             df=plot_df,
             x_axis=x_axis, y_axis=y_axis,
+            group_for_plot=group_for_plot,
             color_map_user=color_map_user,
             symbol_map_user=symbol_map_user,
             size_map_user=size_map_user,
