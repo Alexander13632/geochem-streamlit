@@ -13,6 +13,8 @@ from user_style import generate_group_styles, group_style_editor
 from binning import binning_widget
 from save_style_to_json import export_style
 from editors import inherit_styles_from_typeloc
+from filter_bar import filter_dataframe
+
 
 st.set_page_config(page_title="Geochem Explorer", layout="wide")
 
@@ -23,10 +25,23 @@ df, user_data = get_dataframe()
 
 columns = list(df.columns)
 
+
+if {"type", "Location"}.issubset(df.columns):
+    df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
+    base_color, base_symbol, base_size = build_style_maps(
+        df, type_col="type", loc_col="Location"
+    )
+else:
+    df["type_loc"] = ""
+    base_color, base_symbol, base_size = {}, {}, {}
+
+color_map_user  = base_color.copy()
+symbol_map_user = base_symbol.copy()
+size_map_user   = base_size.copy()
+
 # JSON
 uploaded_style = st.sidebar.file_uploader("Загрузить стиль (JSON)", type=["json"], key="style_file")
 styles: Dict[str, Dict[str, Any]] = {}               # <<< NEW >>>  инициализируем один раз
-
 
 
 # ─── SIDEBAR ──────────────────────────────────────────────────────
@@ -36,21 +51,6 @@ plot_type = st.sidebar.selectbox(
     index=0
 )
 
-
-# --- Если есть колонки "type" и "Location" ---
-if "type" in df.columns and "Location" in df.columns:
-    df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
-    base_color, base_symbol, base_size = build_style_maps(
-        df, type_col="type", loc_col="Location"
-    )
-    color_map_user  = base_color.copy()
-    symbol_map_user = base_symbol.copy()
-    size_map_user   = base_size.copy()
-else:
-    df["type_loc"] = ""
-    color_map_user  = {}
-    symbol_map_user = {}
-    size_map_user   = {}
 
 # --- Селекторы осей и группировки ---
 if user_data:
@@ -82,6 +82,9 @@ if not x_axis or not y_axis:
     st.warning("Please select both X and Y axes to plot.")
     st.stop()
 
+df = filter_dataframe(df)
+
+
 plot_df = df.copy()
 bg_color = "#ffffff"
 font_color = "#000000"
@@ -91,15 +94,27 @@ font_color = "#000000"
 # ─── СБОР СТИЛЕЙ ДЛЯ ВЫБРАННОЙ ГРУППЫ ────────────────────────────
 def build_group_style(df, group_for_plot,
                       base_color, base_symbol, base_size):
-    """Карта стилей для любой группировки."""
-    if group_for_plot == "type_loc":
-        # используем уже готовые карты
+    """Возвращает карты стилей для любой группировки.
+
+    • если в датафрейме есть type+Location → наследуем;
+    • иначе генерируем новые карты для выбранной группы."""
+    have_typeloc = {"type", "Location"}.issubset(df.columns)
+
+    # ── 1. дефолтный случай, как раньше ──────────────────────────
+    if group_for_plot == "type_loc" and have_typeloc:
         return base_color.copy(), base_symbol.copy(), base_size.copy()
-    # иначе наследуем из type|Location
-    return inherit_styles_from_typeloc(
-        df, group_for_plot,
-        base_color, base_symbol, base_size
-    )
+
+    # ── 2. можем наследовать из type|Location? ───────────────────
+    if have_typeloc:
+        return inherit_styles_from_typeloc(
+            df, group_for_plot, base_color, base_symbol, base_size
+        )
+
+    # ── 3. нет type/Location → создаём свежие карты  -------------  
+    #     (цвета, символы, размеры — любые на ваш вкус)
+    colors , symbols  = generate_group_styles(df[group_for_plot].dropna().unique())
+    sizes   = {g: 10 for g in colors}        # все по 10 px
+    return colors, symbols, sizes
 
 # ---------- универсальный блок ----------
 if group_for_plot:                   # выбран столбец группировки
@@ -238,9 +253,9 @@ elif plot_type == "Box plot":
     if group_for_plot and group_for_plot in plot_df.columns:
         fig = plot_box_plot(
             df=plot_df,
-            x="type_loc", y=y_axis,
-            color="type_loc",
-            color_map = color_map_user,
+            x=group_for_plot, y=y_axis,
+            color=group_for_plot,
+            color_map=color_map_user,
             bg_color=bg_color, font_color=font_color
         )
     else:
