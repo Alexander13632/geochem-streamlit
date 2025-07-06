@@ -15,10 +15,10 @@ import pandas as pd
 # Pre‑defined styles for well‑known tectono‑magmatic types
 # ----------------------------------------------------------------------
 TYPE_STYLES: Dict[str, Dict[str, str | int]] = {
-    "MORB":   {"symbol": "circle",      "base_color": "#444444", "size": 15},
-    "OIB":    {"symbol": "square",      "base_color": "#0060ff", "size": 20},
-    "sediments":    {"symbol": "triangle-down",      "base_color": "#ffd000", "size": 20},
-    "arc":    {"symbol": "triangle-up", "base_color": "#00c83e", "size": 20},
+    "MORB":   {"symbol": "circle",      "base_color": "#444444", "size": 10},
+    "OIB":    {"symbol": "square",      "base_color": "#0060ff", "size": 10},
+    "sediments":    {"symbol": "triangle-down",      "base_color": "#ffd000", "size": 15},
+    "arc":    {"symbol": "triangle-up", "base_color": "#00c83e", "size": 15},
     "Deccan": {"symbol": "cross",       "base_color": "#ff0000", "size": 30},
 }
 
@@ -78,7 +78,7 @@ def build_style_maps(
             used_symbols.add(symbol)
             # random colour
             base_color = _rgb_hex(rng.random(), rng.random(), rng.random())
-            style = {"symbol": symbol, "base_color": base_color, "size": 18}
+            style = {"symbol": symbol, "base_color": base_color, "size": 10}
 
         symbol_map[t_key] = style["symbol"]
         size_map[t_key]   = int(style["size"])
