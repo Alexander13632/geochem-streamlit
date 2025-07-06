@@ -122,7 +122,7 @@ def plot_user_table(
     else:
         color_series = None
         symbol_series = None
-        plot_df["__marker_size"] = 10
+        plot_df["__marker_size"] = 15
         plot_df["__marker_opacity"] = 0.9
 
     plot_args = dict(
@@ -141,14 +141,17 @@ def plot_user_table(
         if color_map_user:
             plot_args["color_discrete_map"] = color_map_user
         # Символы работают только для ограниченного числа групп (<15)
-        if plot_df[group_for_plot].nunique() < 15:
+        if plot_df[group_for_plot].nunique() < 30:
             plot_args["symbol"] = symbol_series
             if symbol_map_user:
                 plot_args["symbol_map"] = symbol_map_user
         plot_args["hover_name"] = group_for_plot
 
 
-    fig = px.scatter(**plot_args, size_max=20)
+    fig = px.scatter(**plot_args)          # без size_max !
+    fig.update_traces(
+    marker=dict(sizemode="diameter", sizeref=1, sizemin=7)
+)
 
     # Установка индивидуальной прозрачности
     if opacity_map_user and group_for_plot and group_for_plot in plot_df.columns:
