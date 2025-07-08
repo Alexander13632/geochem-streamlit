@@ -14,8 +14,9 @@ from binning import binning_widget
 from save_style_to_json import export_style
 from editors import inherit_styles_from_typeloc
 from filter_bar import filter_dataframe
+from sidebar_info import show_sidebar_info
 
-
+show_sidebar_info()
 st.set_page_config(page_title="Geochem Explorer", layout="wide")
 
 
