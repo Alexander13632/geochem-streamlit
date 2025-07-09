@@ -55,17 +55,17 @@ plot_type = st.sidebar.selectbox(
 
 # --- Селекторы осей и группировки ---
 if user_data:
-    # Для пользовательских данных селекторы пустые (выбор только вручную)
-    x_axis = st.sidebar.selectbox("Axis X", [""] + columns, index=0)
-    y_axis = st.sidebar.selectbox("Axis Y", [""] + columns, index=0)
+    # для пользовательских данных — только ручной выбор осей
+    x_axis = axis_selector(df, "X", default=columns[0])
+    y_axis = axis_selector(df, "Y", default=columns[1] if len(columns) > 1 else columns[0])
     group_col = st.sidebar.selectbox("Grouping variable", [""] + columns, index=0)
 else:
-    # Для дефолтных данных — как было!
+    # для дефолтных данных — можно задать умолчания
     default_x = "MgO" if "MgO" in columns else (columns[0] if columns else "")
     default_y = "d98Mo" if "d98Mo" in columns else (columns[1] if len(columns) > 1 else "")
     default_group = "type_loc" if "type_loc" in columns else ""
-    x_axis = st.sidebar.selectbox("Axis X", columns, index=columns.index(default_x) if default_x in columns else 0)
-    y_axis = st.sidebar.selectbox("Axis Y", columns, index=columns.index(default_y) if default_y in columns else 0)
+    x_axis = axis_selector(df, "X", default=default_x)
+    y_axis = axis_selector(df, "Y", default=default_y)
     group_col = st.sidebar.selectbox("Grouping variable", [""] + columns, index=([""] + columns).index(default_group) if default_group in columns else 0)
 
 log_x  = st.sidebar.checkbox("log X")
