@@ -8,8 +8,10 @@ def load_csv(url: str) -> pd.DataFrame:
 
 def get_dataframe_from_gsheet(gs_url: str):
     try:
-        # Универсально вытаскиваем ссылку на CSV из Google Sheets
-        if "/edit" in gs_url:
+        # Принимаем сразу рабочие CSV-ссылки
+        if "export?format=csv" in gs_url or "output=csv" in gs_url:
+            csv_url = gs_url
+        elif "/edit" in gs_url:
             csv_url = gs_url.split("/edit")[0] + "/export?format=csv"
         elif "/view" in gs_url:
             csv_url = gs_url.split("/view")[0] + "/export?format=csv"
@@ -22,6 +24,7 @@ def get_dataframe_from_gsheet(gs_url: str):
     except Exception as e:
         st.error(f"Error reading Google Sheets: {e}")
         return pd.DataFrame(), False
+
 
 
 def get_dataframe():
