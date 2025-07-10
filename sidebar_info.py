@@ -13,7 +13,14 @@ def show_sidebar_info():
     **2. Add filters (click Enter after input value), customize style**  
     **3. Export style (JSON) or image (.png, .pdf)**
 
-    ℹ️ For Google Sheets: insert a public link (see example below)
+    ℹ️ For Google Sheets: insert a public link (see example below, copy example link to your clipboard and paste it into the input field, then press Enter).
     """)
+
     with st.sidebar.expander("Example Google Sheets link"):
-        st.markdown("https://docs.google.com/spreadsheets/d/...")
+        st.markdown("https://docs.google.com/spreadsheets/d/1w34ppQgaNuAhQXO16RI8QwtJROPldspvEUAnMaeLuyU/export?format=csv")
+
+    st.sidebar.markdown(
+    "**💡 Ideas, feedback?**\n"
+    "[Your form is here](https://forms.gle/Hv7LfRTGpUu8kXMR9) 📝",
+     unsafe_allow_html=True
+    )
