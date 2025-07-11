@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 
-def filter_dataframe(df):
+def filter_dataframe(df, plot_type = None):
+    key_suffix = f"_{plot_type}" if plot_type else ""
     """UI for online data filtering. Returns the filtered DataFrame."""
     if "filters" not in st.session_state:
         st.session_state.filters = []
 
     st.sidebar.header("Data Filters")
-    add_filter = st.sidebar.button("➕  Add filter", key="add_filter")
+    add_filter = st.sidebar.button("➕  Add filter", key=f"add_filter{key_suffix}")
 
     # Добавить фильтр по клику
     if add_filter:
