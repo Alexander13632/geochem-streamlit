@@ -15,6 +15,8 @@ from save_style_to_json import export_style
 from editors import inherit_styles_from_typeloc
 from filter_bar import filter_dataframe
 from sidebar_info import show_sidebar_info
+from tas_plot import show_tas
+
 
 show_sidebar_info()
 st.set_page_config(page_title="Geochem Explorer", layout="wide")
@@ -48,9 +50,50 @@ styles: Dict[str, Dict[str, Any]] = {}               # <<< NEW >>>  инициа
 # ─── SIDEBAR ──────────────────────────────────────────────────────
 plot_type = st.sidebar.selectbox(
     "Plot type",
-    ["Scatter plot", "Box plot"],   # можно будет добавить другие типы позже
+    ["Scatter plot", "Box plot", "TAS diagram"],   # можно будет добавить другие типы позже
     index=0
 )
+
+# ─── СБОР СТИЛЕЙ ДЛЯ ВЫБРАННОЙ ГРУППЫ ────────────────────────────
+def build_group_style(df, group_for_plot,
+                      base_color, base_symbol, base_size):
+    """Возвращает карты стилей для любой группировки.
+
+    • если в датафрейме есть type+Location → наследуем;
+    • иначе генерируем новые карты для выбранной группы."""
+    have_typeloc = {"type", "Location"}.issubset(df.columns)
+
+    # ── 1. дефолтный случай, как раньше ──────────────────────────
+    if group_for_plot == "type_loc" and have_typeloc:
+        return base_color.copy(), base_symbol.copy(), base_size.copy()
+
+    # ── 2. можем наследовать из type|Location? ───────────────────
+    if have_typeloc:
+        return inherit_styles_from_typeloc(
+            df, group_for_plot, base_color, base_symbol, base_size
+        )
+
+    # ── 3. нет type/Location → создаём свежие карты  -------------  
+    #     (цвета, символы, размеры — любые на ваш вкус)
+    colors , symbols  = generate_group_styles(df[group_for_plot].dropna().unique())
+    sizes   = {g: 10 for g in colors}        # все по 10 px
+    return colors, symbols, sizes
+
+
+
+if plot_type == "TAS diagram":
+    show_tas(
+        df=df,
+        user_data=user_data,
+        base_color=base_color, base_symbol=base_symbol, base_size=base_size,
+        build_group_style=build_group_style,
+        group_style_editor=group_style_editor,
+        filter_dataframe=filter_dataframe,
+    )
+
+
+
+
 
 
 # --- Селекторы осей и группировки ---
@@ -92,30 +135,7 @@ font_color = "#000000"
 
 
 
-# ─── СБОР СТИЛЕЙ ДЛЯ ВЫБРАННОЙ ГРУППЫ ────────────────────────────
-def build_group_style(df, group_for_plot,
-                      base_color, base_symbol, base_size):
-    """Возвращает карты стилей для любой группировки.
 
-    • если в датафрейме есть type+Location → наследуем;
-    • иначе генерируем новые карты для выбранной группы."""
-    have_typeloc = {"type", "Location"}.issubset(df.columns)
-
-    # ── 1. дефолтный случай, как раньше ──────────────────────────
-    if group_for_plot == "type_loc" and have_typeloc:
-        return base_color.copy(), base_symbol.copy(), base_size.copy()
-
-    # ── 2. можем наследовать из type|Location? ───────────────────
-    if have_typeloc:
-        return inherit_styles_from_typeloc(
-            df, group_for_plot, base_color, base_symbol, base_size
-        )
-
-    # ── 3. нет type/Location → создаём свежие карты  -------------  
-    #     (цвета, символы, размеры — любые на ваш вкус)
-    colors , symbols  = generate_group_styles(df[group_for_plot].dropna().unique())
-    sizes   = {g: 10 for g in colors}        # все по 10 px
-    return colors, symbols, sizes
 
 # ---------- универсальный блок ----------
 if group_for_plot:                   # выбран столбец группировки
@@ -143,8 +163,6 @@ if group_for_plot:                   # выбран столбец группи�
     }
 else:
     styles = {}
-
-
 
 
 if not user_data:
@@ -222,8 +240,6 @@ st.sidebar.download_button(
 )
 
 
-
-
 if plot_type == "Scatter plot":
     if not user_data:
         fig = plot_demo_table(
@@ -237,6 +253,7 @@ if plot_type == "Scatter plot":
             styles=styles,
             bg_color=bg_color, font_color=font_color
         )
+
     else:
         fig = plot_user_table(
             df=plot_df,
@@ -262,9 +279,12 @@ elif plot_type == "Box plot":
     else:
         st.warning("Please select a grouping variable to build a box plot.")
         st.stop()
+
+
 else:
     st.warning("Unknown plot type selected.")
     st.stop()
+    
 
 st.plotly_chart(fig, use_container_width=True)
 
