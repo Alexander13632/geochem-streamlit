@@ -43,7 +43,7 @@ symbol_map_user = base_symbol.copy()
 size_map_user   = base_size.copy()
 
 # JSON
-uploaded_style = st.sidebar.file_uploader("Загрузить стиль (JSON)", type=["json"], key="style_file")
+uploaded_style = st.sidebar.file_uploader("Upload style (JSON)", type=["json"], key="style_file")
 styles: Dict[str, Dict[str, Any]] = {}               # <<< NEW >>>  инициализируем один раз
 
 
@@ -53,6 +53,21 @@ plot_type = st.sidebar.selectbox(
     ["Scatter plot", "Box plot", "TAS diagram"],   # можно будет добавить другие типы позже
     index=0
 )
+
+
+st.sidebar.markdown("### Tooltip columns")
+# базовый набор, если эти столбцы есть
+hard_defaults = ["MgO", "d98Mo"]
+# оставляем только те, что присутствуют в текущем DataFrame
+default_hover = [c for c in hard_defaults if c in df.columns]
+hover_cols = st.sidebar.multiselect(
+    "Show in tooltip",
+    options=list(df.columns),
+    default=default_hover,      # ← пустой список, если ни одного не нашли
+    key="hover_cols"
+)
+
+hover_cols = hover_cols or []  # если ничего не выбрано, то пустой список
 
 # ─── СБОР СТИЛЕЙ ДЛЯ ВЫБРАННОЙ ГРУППЫ ────────────────────────────
 def build_group_style(df, group_for_plot,
@@ -89,6 +104,7 @@ if plot_type == "TAS diagram":
         build_group_style=build_group_style,
         group_style_editor=group_style_editor,
         filter_dataframe=filter_dataframe,
+        hover_cols=hover_cols
     )
 
 
@@ -240,6 +256,7 @@ st.sidebar.download_button(
 )
 
 
+
 if plot_type == "Scatter plot":
     if not user_data:
         fig = plot_demo_table(
@@ -251,7 +268,7 @@ if plot_type == "Scatter plot":
             size_map_user=size_map_user,
             log_x=log_x, log_y=log_y,
             styles=styles,
-            bg_color=bg_color, font_color=font_color
+            bg_color=bg_color, font_color=font_color, hover_cols=hover_cols
         )
 
     else:
@@ -264,7 +281,7 @@ if plot_type == "Scatter plot":
             size_map_user=size_map_user,
             log_x=log_x, log_y=log_y,
             styles=styles,
-            bg_color=bg_color, font_color=font_color
+            bg_color=bg_color, font_color=font_color, hover_cols=hover_cols
         )
 elif plot_type == "Box plot":
     # Группировка нужна обязательно!
@@ -274,7 +291,7 @@ elif plot_type == "Box plot":
             x=group_for_plot, y=y_axis,
             color=group_for_plot,
             color_map=color_map_user,
-            bg_color=bg_color, font_color=font_color
+            bg_color=bg_color, font_color=font_color, hover_cols=hover_cols
         )
     else:
         st.warning("Please select a grouping variable to build a box plot.")
