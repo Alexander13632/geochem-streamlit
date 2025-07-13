@@ -6,6 +6,7 @@ def plot_demo_table(
     group_for_plot,                 # ← новый аргумент
     color_map_user, symbol_map_user, size_map_user,
     log_x=False, log_y=False,
+    hover_cols=None,
     styles=None,
     bg_color="#ffffff", font_color="#000000"
 ):
@@ -24,6 +25,11 @@ def plot_demo_table(
     size_col = "__marker_size"
     plot_df[size_col] = plot_df[grp].map(size_map_user).fillna(5)
 
+
+    hover_dict = {c: True for c in hover_cols}
+    hover_dict[size_col] = False
+
+
     plot_args = dict(
         x=x_axis,
         y=y_axis,
@@ -37,6 +43,7 @@ def plot_demo_table(
         symbol_map         = symbol_map_user,
         size               = plot_df[size_col],
         hover_name         = grp,
+        hover_data = hover_dict,
     )
 
     fig = px.scatter(**plot_args)          # без size_max !
@@ -100,7 +107,8 @@ def plot_user_table(
     color_map_user=None, symbol_map_user=None,
     size_map_user=None, opacity_map_user=None,
     log_x=False, log_y=False,
-    styles=None, bg_color="#ffffff", font_color="#000000"
+    styles=None, bg_color="#ffffff", font_color="#000000",
+    hover_cols=None
 ):
     plot_df = df.copy()
 
@@ -125,6 +133,9 @@ def plot_user_table(
         plot_df["__marker_size"] = 15
         plot_df["__marker_opacity"] = 0.9
 
+    hover_dict = {c: True for c in hover_cols}
+    hover_dict["__marker_size"] = False
+
     plot_args = dict(
         x=x_axis,
         y=y_axis,
@@ -133,6 +144,7 @@ def plot_user_table(
         log_y=log_y,
         height=650,
         size=plot_df["__marker_size"],
+        hover_data=hover_dict,
         size_max=80,  # увеличь max если надо
     )
 
@@ -222,8 +234,16 @@ def plot_box_plot(
         outline_width_map: dict | None = None,
         bg_color: str = "#ffffff",
         font_color: str = "#000000",
+        hover_cols=None
 ):
 
+    # --- 1. безопасный список колонок для tooltip ----------------
+    hover_cols = hover_cols or []                       # None → []
+    hover_dict = {c: True for c in hover_cols if c in df.columns}
+
+    # скрывать служебный столбец только если он реально существует
+    if "__marker_size" in df.columns:
+        hover_dict["__marker_size"] = False
 
     fig = px.box(
         df,
@@ -235,6 +255,7 @@ def plot_box_plot(
         height=650,
         color_discrete_map=color_map or {},
         width=None,
+        hover_data=hover_dict
     )
 
     # 2️⃣ Перебор трэйсов и кастомизация точек по группам
