@@ -13,17 +13,29 @@ AXIS_STYLE = dict(
 )
 
 FIELD_LABELS = {
-    "Picro-basalt":        (42,  0.8),
+    "Picro-basalt":        (42.5,  2),
     "Basalt":              (47,  4.0),
     "Basaltic andesite":   (49,  6.2),
     "Andesite":            (53,  8.3),
-    "Dacite":              (60,  6.8),
+    "Dacite":              (57,  8.0),
     "Rhyolite":            (72,  8.0),
+    "Basanite":            (43,  7.0),
+    "Phonotephrite":        (48, 9.0),
+    "Tephriphonolite":      (53, 12.0),
+    "Phonolite":          (57.5, 13.0),
+    "Trachyte":           (65, 11.0),
+    "Basaltic andesite": (54, 4.0),
+    "Andesite":        (60, 4.0),
+    "Dacite":          (68, 4.0),
+    "Trachybasalt": (49, 6.0),
+    "Basaltic trachy-andesite": (53, 7.0),
+    "Trachy-andesite": (58, 9.0)
+
     # … добавьте остальные …
 }
 
 def add_field_labels(fig, labels=FIELD_LABELS,
-                     font_size=10, font_color="#222", opacity=0.9):
+                     font_size=12, font_color="#000000", opacity=0.9):
     """Кладёт подписи TAS-полей по фиксированным координатам."""
     for name, (x, y) in labels.items():
         fig.add_annotation(
@@ -87,29 +99,21 @@ def empty_tas_figure():
             hoverinfo="skip", showlegend=False)
         )
 
-    # ── подписи полей ───────────────────────────────────────────
-    labels = [
-        (41.5, 1.0,  "picro-"),
-        (41.5, 0.5,  "basalt"),
-        (46.0, 4.0,  "basalt"),
-        (52.8, 2.0,  "basaltic"),
-        (52.8, 1.5,  "andesite"),
-        # … добавьте все нужные подписи …
-    ]
-    for x, y, txt in labels:
-        fig.add_annotation(x=x, y=y, text=txt,
-                           showarrow=False, font=dict(size=10))
+
     add_field_labels(fig)
     return fig
-
 
 
 def plot_tas_diagram(
     df, x_col, y_col, group_col=None,
     color_map_user=None, symbol_map_user=None,
     size_map_user=None, styles=None,
-    base_fig=None,                           # ◀︎ добавили!
+    base_fig=None, hover_cols=None
 ):
+    hover_cols = hover_cols or []
+    # отфильтруем только существующие в df колонки
+    hover_cols = [c for c in hover_cols if c in df.columns]
+
     # 1) если base_fig задан → берём его, иначе создаём de-novo
     fig = base_fig if base_fig is not None else empty_tas_figure()
 
@@ -152,7 +156,7 @@ def show_tas(
     df, user_data,
     base_color, base_symbol, base_size,
     build_group_style, group_style_editor,
-    filter_dataframe,
+    filter_dataframe, hover_cols=None
 ):
     """
     Отрисовывает виджеты TAS, строит график, делает st.stop().
