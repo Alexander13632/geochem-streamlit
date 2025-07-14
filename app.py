@@ -130,12 +130,15 @@ else:
 log_x  = st.sidebar.checkbox("log X")
 log_y  = st.sidebar.checkbox("log Y")
 
-bin_col, bin_labels = binning_widget(df, group_col)
-if bin_col:
-    group_for_plot = bin_col
-else:
-    group_for_plot = group_col
+bin_col, bin_labels = None, None
 
+if group_col and pd.api.types.is_numeric_dtype(df[group_col]):
+    # числовая → создаём бины
+    bin_col, bin_labels = binning_widget(df, group_col)
+    group_for_plot = bin_col if bin_col else None   # бины или ничего
+else:
+    # категориальная или не выбрано
+    group_for_plot = group_col or None
 
 
 if not x_axis or not y_axis:
@@ -154,7 +157,8 @@ font_color = "#000000"
 
 
 # ---------- универсальный блок ----------
-if group_for_plot:                   # выбран столбец группировки
+if group_for_plot:
+    df = df[df[group_for_plot].notna()]                   # выбран столбец группировки
     color_map_user, symbol_map_user, size_map_user = build_group_style(
         df, group_for_plot,
         base_color, base_symbol, base_size
