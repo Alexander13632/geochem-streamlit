@@ -20,6 +20,7 @@ def binning_widget(df: pd.DataFrame, group_col: str):
         df[bin_col] = cut.cat.rename_categories(labels)
         return bin_col
 
+
     if mode == "Equal width":
         n_bins = st.sidebar.slider("Number of bins", 2, 15, 4,
                                    key=f"bin_nbins_{k}")
