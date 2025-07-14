@@ -44,30 +44,30 @@ size_map_user   = base_size.copy()
 
 # JSON
 uploaded_style = st.sidebar.file_uploader("Upload style (JSON)", type=["json"], key="style_file")
-styles: Dict[str, Dict[str, Any]] = {}               # <<< NEW >>>  инициализируем один раз
+styles: Dict[str, Dict[str, Any]] = {}               # <<< NEW >>>  initialization one time
 
 
 # ─── SIDEBAR ──────────────────────────────────────────────────────
 plot_type = st.sidebar.selectbox(
     "Plot type",
-    ["Scatter plot", "Box plot", "TAS diagram"],   # можно будет добавить другие типы позже
+    ["Scatter plot", "Box plot", "TAS diagram"],   # add different plot types here later
     index=0
 )
 
 
 st.sidebar.markdown("### Tooltip columns")
-# базовый набор, если эти столбцы есть
+# default set if this set exist
 hard_defaults = ["MgO", "d98Mo"]
 # оставляем только те, что присутствуют в текущем DataFrame
 default_hover = [c for c in hard_defaults if c in df.columns]
 hover_cols = st.sidebar.multiselect(
     "Show in tooltip",
     options=list(df.columns),
-    default=default_hover,      # ← пустой список, если ни одного не нашли
+    default=default_hover,      # ← empty list if none found
     key="hover_cols"
 )
 
-hover_cols = hover_cols or []  # если ничего не выбрано, то пустой список
+hover_cols = hover_cols or []  # if nothing is selected, then an empty list
 
 # ─── СБОР СТИЛЕЙ ДЛЯ ВЫБРАННОЙ ГРУППЫ ────────────────────────────
 def build_group_style(df, group_for_plot,
@@ -78,18 +78,18 @@ def build_group_style(df, group_for_plot,
     • иначе генерируем новые карты для выбранной группы."""
     have_typeloc = {"type", "Location"}.issubset(df.columns)
 
-    # ── 1. дефолтный случай, как раньше ──────────────────────────
+    # ── 1. default case, as before ──────────────────────────
     if group_for_plot == "type_loc" and have_typeloc:
         return base_color.copy(), base_symbol.copy(), base_size.copy()
 
-    # ── 2. можем наследовать из type|Location? ───────────────────
+    # ── 2. can we inherit from type|Location? ───────────────────
     if have_typeloc:
         return inherit_styles_from_typeloc(
             df, group_for_plot, base_color, base_symbol, base_size
         )
 
-    # ── 3. нет type/Location → создаём свежие карты  -------------  
-    #     (цвета, символы, размеры — любые на ваш вкус)
+    # ── 3. no type/Location → create new styles  -------------  
+    #     (color, symbol, size)
     colors , symbols  = generate_group_styles(df[group_for_plot].dropna().unique())
     sizes   = {g: 10 for g in colors}        # все по 10 px
     return colors, symbols, sizes
@@ -112,14 +112,14 @@ if plot_type == "TAS diagram":
 
 
 
-# --- Селекторы осей и группировки ---
+# --- Selectors for axes and grouping ---
 if user_data:
-    # для пользовательских данных — только ручной выбор осей
+    # for user data — only manual axis selection
     x_axis = axis_selector(df, "X", default=columns[0])
     y_axis = axis_selector(df, "Y", default=columns[1] if len(columns) > 1 else columns[0])
     group_col = st.sidebar.selectbox("Grouping variable", [""] + columns, index=0)
 else:
-    # для дефолтных данных — можно задать умолчания
+    # for default data — can set defaults
     default_x = "MgO" if "MgO" in columns else (columns[0] if columns else "")
     default_y = "d98Mo" if "d98Mo" in columns else (columns[1] if len(columns) > 1 else "")
     default_group = "type_loc" if "type_loc" in columns else ""
@@ -132,13 +132,40 @@ log_y  = st.sidebar.checkbox("log Y")
 
 bin_col, bin_labels = None, None
 
-if group_col and pd.api.types.is_numeric_dtype(df[group_col]):
-    # числовая → создаём бины
-    bin_col, bin_labels = binning_widget(df, group_col)
-    group_for_plot = bin_col if bin_col else None   # бины или ничего
+nested_bin_col  = None         # конечная комбинированная колонка
+second_num_col  = None         # числовая переменная для бинов
+
+
+if group_col and not pd.api.types.is_numeric_dtype(df[group_col]):
+    # есть ли вообще числовые столбцы?
+    numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
+    if numeric_cols:
+        second_num_col = st.sidebar.selectbox(
+            "Sub-bin by numeric …", [""] + numeric_cols, index=0
+        )
+
+        if second_num_col:
+            # общий бининг для всей таблицы (те же интервалы во всех группах)
+            sub_bin_col, _ = binning_widget(df, second_num_col)
+
+            if sub_bin_col:
+                combined = df[group_col].astype(str) + "|" + df[sub_bin_col].astype(str)
+                nested_bin_col = "__combined_group"
+                df[nested_bin_col] = combined
+
+if nested_bin_col:                       # вариант «категория + бины»
+    group_for_plot = nested_bin_col
+
+elif group_col and pd.api.types.is_numeric_dtype(df[group_col]):
+    # старая логика «числовая группировка → глобальный бининг»
+    global_bin_col, _ = binning_widget(df, group_col)
+    group_for_plot = global_bin_col if global_bin_col else None
+
 else:
-    # категориальная или не выбрано
-    group_for_plot = group_col or None
+    group_for_plot = group_col or None   # просто категориальная
+
+
+
 
 
 if not x_axis or not y_axis:
@@ -196,7 +223,6 @@ if not user_data:
             cur_color  = color_map_user.get(key,  "#1f77b4")
             cur_symbol = symbol_map_user.get(typ, "circle")
             cur_size   = size_map_user.get(typ,   20)
-            # Вот здесь меняешь ключи!
             color  = st.color_picker("Color", cur_color, key=f"demo_col_{key}")
             sym_idx = pre_symbols.index(cur_symbol) if cur_symbol in pre_symbols else 0
             symbol = st.selectbox("Symbol", pre_symbols, index=sym_idx, key=f"demo_sym_{key}")
@@ -220,39 +246,39 @@ if not user_data:
 
 opacity_map_user = {}   # <- чтобы был всегда, даже если не user_data
 
-# ─── ЗАГРУЗКА ФАЙЛА ─────────────────────────────────────────────
+# ─── download data ─────────────────────────────────────────────
 if uploaded_style is not None:
     try:
-        styles = json.load(uploaded_style)          # файл-объект -> dict
+        styles = json.load(uploaded_style)          # file-object -> dict
 
-        # --- ⬇︎ РАСПАРСИВАЕМ И ПРИМЕНЯЕМ СТИЛИ ------------------
+        # --- ⬇︎ PARSE AND APPLY STYLES ------------------
         for key, attrs in styles.items():
-            # ☐ Цвет (ключ — всегда полный «type|Location» или имя группы)
+            # ☐ Color (key — always full «type|Location» or group name)
             if "color" in attrs:
                 color_map_user[key] = attrs["color"]
 
-            # ☐ Символ / размер: для демо-режима берём только «type»
+            # ☐ Symbol / size: for demo mode we take only «type»
             typ = key.split("|")[0] if not user_data else key
             if "symbol" in attrs:
                 symbol_map_user[typ] = attrs["symbol"]
             if "size" in attrs:
                 size_map_user[typ] = attrs["size"]
 
-            # ☐ Прозрачность
+            # ☐ Opacity
             if "opacity" in attrs:
                 opacity_map_user[key] = attrs["opacity"]
         # ---------------------------------------------------------
 
-        st.success("Стиль загружен!")
+        st.success("Style loaded successfully!")
     except Exception as e:
-        st.error(f"Не удалось загрузить стиль: {e}")
+        st.error(f"Failed to load style: {e}")
 
 
 
-# ─── КНОПКА «СОХРАНИТЬ» ─────────────────────────────────────────
+# ─── SAVE BUTTON ─────────────────────────────────────────
 json_bytes = json.dumps(styles, indent=2).encode("utf-8")
 st.sidebar.download_button(
-    "💾 Сохранить стиль (JSON)",
+    "💾 Save style (JSON)",
     data=json_bytes,
     file_name="style.json",
     mime="application/json",
