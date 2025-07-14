@@ -2,43 +2,51 @@ import pandas as pd
 import streamlit as st
 
 def binning_widget(df: pd.DataFrame, group_col: str):
-    """
-    Widget for manual/automatic binning of a numeric variable into intervals (bins).
-    Returns: (name of the new column for bins or None, list of strings with bin labels or None)
-    """
-    bins_col = None
-    bin_labels = None
+    if not group_col or not pd.api.types.is_numeric_dtype(df[group_col]):
+        return None, None
 
-    if group_col and pd.api.types.is_numeric_dtype(df[group_col]):
-        st.sidebar.markdown("### Binning for grouping")
-        mode = st.sidebar.radio(
-            "Binning mode", ["Equal width", "Manual"], horizontal=True, key="bin_mode"
-        )
-        if mode == "Equal width":
-            n_bins = st.sidebar.slider("Number of bins", 2, 15, 4, key="bin_nbins")
-            bin_col = f"{group_col}_bin"
-            df[bin_col], bin_edges = pd.cut(df[group_col], bins=n_bins, retbins=True, include_lowest=True)
-            bins_col = bin_col
-            bin_labels = [f"{round(left, 2)}–{round(right, 2)}" for left, right in zip(bin_edges[:-1], bin_edges[1:])]
-        elif mode == "Manual":
-            min_val, max_val = float(df[group_col].min()), float(df[group_col].max())
-            bins_str = st.sidebar.text_input(
-                "Enter bin edges (comma-separated)", 
-                value=f"{min_val:.2f},{max_val:.2f}",
-                key="bin_edges"
-            )
-            try:
-                edges = [float(x.strip()) for x in bins_str.split(",") if x.strip() != ""]
-                if len(edges) >= 2:
-                    bin_col = f"{group_col}_bin"
-                    df[bin_col] = pd.cut(df[group_col], bins=edges, include_lowest=True)
-                    bins_col = bin_col
-                    bin_labels = [f"{edges[i]}–{edges[i+1]}" for i in range(len(edges)-1)]
-            except Exception as e:
-                st.sidebar.warning("Check bin edges format!")
+    k = group_col
+    st.sidebar.markdown(f"### Binning for **{group_col}**")
 
-        # (Опционально) показываем предпросмотр
-        if bin_labels:
-            st.sidebar.write("Bins:", bin_labels)
+    mode = st.sidebar.radio("Binning mode",
+                            ["Equal width", "Manual"],
+                            horizontal=True, key=f"bin_mode_{k}")
 
-    return bins_col, bin_labels
+    series = pd.to_numeric(df[group_col], errors="coerce")   # безопасно
+
+    def _rename_and_save(cut, labels):
+        bin_col = f"{group_col}_bin"
+        # заменяем только категории, пропуски остаются NaN
+        df[bin_col] = cut.cat.rename_categories(labels)
+        return bin_col
+
+    if mode == "Equal width":
+        n_bins = st.sidebar.slider("Number of bins", 2, 15, 4,
+                                   key=f"bin_nbins_{k}")
+        cut, edges = pd.cut(series, bins=n_bins,
+                            include_lowest=True, retbins=True)
+        labels = [f"{round(l,2)}–{round(r,2)}"
+                  for l, r in zip(edges[:-1], edges[1:])]
+        bin_col = _rename_and_save(cut, labels)
+
+    else:  # Manual
+        mn, mx = float(series.min()), float(series.max())
+        raw = st.sidebar.text_input("Enter bin edges (comma-separated)",
+                                    value=f"{mn:.2f},{mx:.2f}",
+                                    key=f"bin_edges_{k}")
+        try:
+            edges = [float(x.strip()) for x in raw.split(",") if x.strip()]
+            if len(edges) < 2:
+                raise ValueError
+            cut = pd.cut(series, bins=edges, include_lowest=True)
+            labels = [f"{edges[i]}–{edges[i+1]}"
+                      for i in range(len(edges)-1)]
+            bin_col = _rename_and_save(cut, labels)
+        except ValueError:
+            st.sidebar.warning("Введите минимум две числовых точки через запятую")
+            return None, None
+
+    st.sidebar.write("Bins:", labels)
+    return bin_col, labels
+
+
