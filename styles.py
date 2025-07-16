@@ -19,7 +19,7 @@ TYPE_STYLES: Dict[str, Dict[str, str | int]] = {
     "OIB":    {"symbol": "square",      "base_color": "#0060ff", "size": 10},
     "sediments":    {"symbol": "triangle-down",      "base_color": "#ffd000", "size": 15},
     "arc":    {"symbol": "triangle-up", "base_color": "#00c83e", "size": 15},
-    "Deccan": {"symbol": "cross",       "base_color": "#ff0000", "size": 30},
+    "_2": {"symbol": "cross",       "base_color": "#ff0000", "size": 30},
 }
 
 # Pool of symbols to choose for unknown types (avoid duplicates)
@@ -160,3 +160,6 @@ def line_style_editor(
         line_color_map,                       # 7
         outline_color_map, outline_width_map  # 8-9
     )
+
+
+
