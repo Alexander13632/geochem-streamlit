@@ -27,7 +27,7 @@ AVAILABLE_SYMBOLS = [
     "circle", "square", "diamond", "triangle-up", "triangle-down",
     "cross", "x", "star", "hexagon", "pentagon",
     "triangle-left", "triangle-right", "hexagon2",
-    "star-diamond", "asterisk",
+    "star-diamond", "asterisk", "hourglass", "hexagram", "octagon",
 ]
 
 # ----------------------------------------------------------------------
