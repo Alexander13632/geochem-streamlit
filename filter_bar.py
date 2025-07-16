@@ -6,8 +6,23 @@ def filter_dataframe(df, plot_type = None):
     """UI for online data filtering. Returns the filtered DataFrame."""
     if "filters" not in st.session_state:
         st.session_state.filters = []
+    
+    # Добавляем состояние для логики фильтрации
+    if f"filter_logic{key_suffix}" not in st.session_state:
+        st.session_state[f"filter_logic{key_suffix}"] = "AND"
 
     st.sidebar.header("Data Filters")
+    
+    # Выбор логики фильтрации
+    filter_logic = st.sidebar.radio(
+        "Filter Logic:", 
+        ["AND", "OR"], 
+        index=0 if st.session_state[f"filter_logic{key_suffix}"] == "AND" else 1,
+        key=f"filter_logic_radio{key_suffix}",
+        horizontal=True
+    )
+    st.session_state[f"filter_logic{key_suffix}"] = filter_logic
+    
     add_filter = st.sidebar.button("➕  Add filter", key=f"add_filter{key_suffix}")
 
     # Добавить фильтр по клику
@@ -28,19 +43,19 @@ def filter_dataframe(df, plot_type = None):
         col = cols[0].selectbox(
             "", df.columns,
             index=list(df.columns).index(f["col"]),
-            key=f"f_col_{i}", label_visibility="collapsed"
+            key=f"f_col_{i}{key_suffix}", label_visibility="collapsed"
         )
         op  = cols[1].selectbox(
             "", [">", "<", ">=", "<=", "==", "!="],
             index=[">", "<", ">=", "<=", "==", "!="].index(f["op"]),
-            key=f"f_op_{i}", label_visibility="collapsed"
+            key=f"f_op_{i}{key_suffix}", label_visibility="collapsed"
         )
         val = cols[2].text_input(
             "", value=str(f["val"]),
-            key=f"f_val_{i}", label_visibility="collapsed"
+            key=f"f_val_{i}{key_suffix}", label_visibility="collapsed"
         )
 
-        remove = cols[3].button("✖", key=f"f_rm_{i}", use_container_width=True)
+        remove = cols[3].button("✖", key=f"f_rm_{i}{key_suffix}", use_container_width=True)
 
         st.session_state.filters[i] = {"col": col, "op": op, "val": val}
         if remove:
@@ -48,11 +63,16 @@ def filter_dataframe(df, plot_type = None):
             st.rerun()
 
     # Фильтрация данных
-    filtered_df = df.copy()
+    if not st.session_state.filters:
+        return df.copy()
+    
+    # Создаем маски для каждого фильтра
+    masks = []
     for f in st.session_state.filters:
         col = f["col"]
         op = f["op"]
         val = f["val"]
+        
         # Попробовать преобразовать val к float, если колонка числовая
         if pd.api.types.is_numeric_dtype(df[col]):
             try:
@@ -61,17 +81,38 @@ def filter_dataframe(df, plot_type = None):
                 continue
         else:
             val_cast = val
-        # Применить фильтр
+        
+        # Создать маску для текущего фильтра
         if op == ">":
-            filtered_df = filtered_df[filtered_df[col] > val_cast]
+            mask = df[col] > val_cast
         elif op == "<":
-            filtered_df = filtered_df[filtered_df[col] < val_cast]
+            mask = df[col] < val_cast
         elif op == ">=":
-            filtered_df = filtered_df[filtered_df[col] >= val_cast]
+            mask = df[col] >= val_cast
         elif op == "<=":
-            filtered_df = filtered_df[filtered_df[col] <= val_cast]
+            mask = df[col] <= val_cast
         elif op == "==":
-            filtered_df = filtered_df[filtered_df[col] == val_cast]
+            mask = df[col] == val_cast
         elif op == "!=":
-            filtered_df = filtered_df[filtered_df[col] != val_cast]
-    return filtered_df
+            mask = df[col] != val_cast
+        else:
+            continue
+            
+        masks.append(mask)
+    
+    # Объединяем маски в зависимости от выбранной логики
+    if masks:
+        if filter_logic == "AND":
+            # Логика И - все условия должны быть истинными
+            final_mask = masks[0]
+            for mask in masks[1:]:
+                final_mask = final_mask & mask
+        else:
+            # Логика ИЛИ - хотя бы одно условие должно быть истинным
+            final_mask = masks[0]
+            for mask in masks[1:]:
+                final_mask = final_mask | mask
+        
+        return df[final_mask].copy()
+    else:
+        return df.copy()
