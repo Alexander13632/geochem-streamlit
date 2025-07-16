@@ -6,13 +6,22 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # ── пресеты (пример) ───────────────────────────────────────────
-CI_VALUES = {"La": 0.237, "Ce": 0.613, "Pr": 0.092, "Nd": 0.457}
-PM_VALUES = {"La": 0.28 , "Ce": 0.73 , "Pr": 0.108, "Nd": 0.57 }
+CI_VALUES = {"La": 0.237 , "Ce": 0.613 , "Pr": 0.0928, "Nd": 0.457, "Sm": 0.148,
+             "Eu": 0.0563, "Gd": 0.199, "Tb": 0.0361, "Dy": 0.246, "Ho": 0.054,
+             "Er": 0.160, "Tm": 0.0247, "Yb": 0.161, "Lu": 0.0246,
+             "Nb": 0.240, "Mo": 0.900, "Cs": 0.190, "Ba": 2.410, "Hf": 0.103, "Ta": 0.0136,
+             "Pb": 2.470, "Th": 0.029, "U": 0.0074, "Rb": 2.3, "Sr": 7.25}
+
+PM_VALUES = {"La": 0.648 , "Ce": 1.675 , "Pr": 0.254, "Nd": 1.250, "Sm": 0.406,
+             "Eu": 0.154, "Gd": 0.544, "Tb": 0.099, "Dy": 0.674, "Ho": 0.149,
+             "Er": 0.438, "Tm": 0.068, "Yb": 0.441, "Lu": 0.0675,
+             "Nb": 0.658, "Mo": 0.050, "Cs": 0.021, "Ba": 6.6, "Hf": 0.283, "Ta": 0.037,
+             "Pb": 0.150, "Th": 0.0795, "U": 0.0203, "Rb": 0.6, "Sr": 19.9}
 
 _PRESETS = {
     "— choose —": None,
-    "CI Chondrite"     : CI_VALUES,
-    "Primitive Mantle" : PM_VALUES,
+    "CI Chondrite (McDonough & Sun, 1995)"     : CI_VALUES,
+    "Primitive Mantle (McDonough & Sun, 1995)" : PM_VALUES,
 }
 
 
