@@ -193,7 +193,7 @@ if user_data:
 else:
     # for default data — can set defaults
     default_x = "MgO" if "MgO" in columns else (columns[0] if columns else "")
-    default_y = "d98Mo" if "d98Mo" in columns else (columns[1] if len(columns) > 1 else "")
+    default_y = "SiO2" if "SiO2" in columns else (columns[1] if len(columns) > 1 else "")
     default_group = "type_loc" if "type_loc" in columns else ""
     x_axis = axis_selector(df, "X", default=default_x)
     y_axis = axis_selector(df, "Y", default=default_y)
