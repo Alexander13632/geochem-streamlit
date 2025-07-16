@@ -4,8 +4,9 @@ import pandas as pd
 import plotly.express as px
 import copy
 import random
+import normalizer
 from typing import Dict, Any
-from styles import build_style_maps, AVAILABLE_SYMBOLS     # ваш файл
+from styles import build_style_maps, line_style_editor, AVAILABLE_SYMBOLS     # ваш файл
 from utils import axis_selector
 from plotting import plot_demo_table, plot_user_table, plot_box_plot
 from data_loader import get_dataframe
@@ -19,7 +20,7 @@ from tas_plot import show_tas
 
 
 show_sidebar_info()
-st.set_page_config(page_title="Geochem Explorer", layout="wide")
+st.set_page_config(page_title="GeoQuick", layout="wide")
 
 
 
@@ -50,7 +51,7 @@ styles: Dict[str, Dict[str, Any]] = {}               # <<< NEW >>>  initializati
 # ─── SIDEBAR ──────────────────────────────────────────────────────
 plot_type = st.sidebar.selectbox(
     "Plot type",
-    ["Scatter plot", "Box plot", "TAS diagram"],   # add different plot types here later
+    ["Scatter plot", "Box plot", "TAS diagram", "Multielemental plot"],   # add different plot types here later
     index=0
 )
 
@@ -93,6 +94,77 @@ def build_group_style(df, group_for_plot,
     colors , symbols  = generate_group_styles(df[group_for_plot].dropna().unique())
     sizes   = {g: 10 for g in colors}        # все по 10 px
     return colors, symbols, sizes
+
+
+
+# --------------------------------------------------------------
+#   MULTIELEMENTAL  PLOT
+# --------------------------------------------------------------
+if plot_type == "Multielemental plot":
+    
+    group_col: str | None = None
+    elems: list[str] = []
+    norm_set: dict[str, float] | None = None
+
+
+    # 1. селектор группы
+    group_choice = st.sidebar.selectbox(
+        "Grouping variable", [""] + list(df.columns), index=0
+    )
+    group_col = group_choice or None
+
+    # 2. выбор элементов / норм-набора
+    elems, norm_set = normalizer.norm_controls(df)
+
+    # ... выбор group_col, elems, norm_set ...
+
+    if elems and norm_set:
+
+        df_plot = df.copy()
+        if group_col:
+            df_plot = df_plot[df_plot[group_col].notna()]
+
+            color_map, symbol_map, size_map = build_group_style(
+                df_plot, group_col, base_color, base_symbol, base_size
+            )
+            opacity_map = {g: 0.9 for g in color_map}
+            width_map   = {g: 2 for g in color_map}
+            dash_map    = {g: "solid" for g in color_map}
+            line_color_map     = {g: color_map[g] for g in color_map}   # стартуем тем же
+            outline_color_map  = {g: "#000000" for g in color_map}      # черный контур
+            outline_width_map  = {g: 0 for g in color_map}
+
+            st.sidebar.markdown(f"---\n### Line & Marker style ({group_col})")
+            (color_map, symbol_map, size_map,
+             opacity_map, width_map, dash_map,
+             line_color_map,
+             outline_color_map, outline_width_map) = line_style_editor(
+                list(color_map.keys()),
+                color_map, symbol_map, size_map,      # 1-3
+                opacity_map, width_map, dash_map,     # 4-6
+                line_color_map,                       # 7
+                outline_color_map, outline_width_map  # 8-9
+            )
+        else:
+            color_map = symbol_map = size_map = opacity_map = None
+            width_map = dash_map = line_color_map = outline_color_map = outline_width_map = None
+
+        fig = normalizer.multielemental_plot(
+            df_plot, elems, norm_set,
+            group_col        = group_col,
+            color_map        = color_map,
+            symbol_map       = symbol_map,
+            size_map         = size_map,
+            width_map        = width_map,
+            dash_map         = dash_map,
+            line_color_map   = line_color_map,
+            outline_color_map= outline_color_map,
+            outline_width_map= outline_width_map,
+            log_y=True
+        )
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.stop()
 
 
 
@@ -345,12 +417,23 @@ export_fig.update_layout(width=1200, height=800,
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.download_button("Save plot (PNG)",
-        export_fig.to_image(format="png"), file_name="plot.png")
+    try:
+        st.download_button("Save plot (PNG)",
+            export_fig.to_image(format="png"), 
+            file_name="plot.png")
+    except Exception as e:
+        st.warning("PNG export temporarily unavailable. You can use the screenshot feature in the plot toolbar instead.")
+
 with col2:
     st.download_button("Save data (CSV)",
-        plot_df.to_csv(index=False), file_name="data.csv")
+        plot_df.to_csv(index=False), 
+        file_name="data.csv")
+
 with col3:
-    st.download_button("Save plot (PDF)",
-        export_fig.to_image(format="pdf"), file_name="plot.pdf",
-        mime="application/pdf")
+    try:
+        st.download_button("Save plot (PDF)",
+            export_fig.to_image(format="pdf"), 
+            file_name="plot.pdf",
+            mime="application/pdf")
+    except Exception as e:
+        st.warning("PDF export temporarily unavailable. You can use the screenshot feature in the plot toolbar instead.")
