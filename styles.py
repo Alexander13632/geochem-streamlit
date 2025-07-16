@@ -10,7 +10,7 @@ import colorsys
 import random
 from typing import Dict, Tuple
 import pandas as pd
-
+import streamlit as st
 # ----------------------------------------------------------------------
 # Pre‑defined styles for well‑known tectono‑magmatic types
 # ----------------------------------------------------------------------
@@ -102,3 +102,61 @@ def build_style_maps(
         color_map.setdefault(str(loc), _rgb_hex(rng.random(), rng.random(), rng.random()))
 
     return color_map, symbol_map, size_map
+
+
+def line_style_editor(
+    groups,
+    color_map, symbol_map, size_map,
+    opacity_map, width_map, dash_map,
+    line_color_map, outline_color_map, outline_width_map,
+):
+    for g in groups:
+        with st.sidebar.expander(g, expanded=False):
+            color_map[g] = st.color_picker("Marker color", color_map[g],
+                                           key=f"{g}_col_me")
+
+            symbol_map[g] = st.selectbox(
+                "Symbol", AVAILABLE_SYMBOLS,
+                index=AVAILABLE_SYMBOLS.index(symbol_map[g]),
+                key=f"{g}_sym_me"
+            )
+
+            size_map[g] = st.slider(
+                "Marker size", 4, 20, size_map[g], key=f"{g}_size_me"
+            )
+
+            line_color_map[g] = st.color_picker(
+                "Line color", line_color_map[g], key=f"{g}_linecol_me"
+            )
+
+            outline_color_map[g] = st.color_picker(          # NEW
+                "Outline color", outline_color_map[g],
+                key=f"{g}_outcol_me"
+            )
+
+            outline_width_map[g] = st.slider(
+                "Outline width", 0, 5, outline_width_map[g],
+                key=f"{g}_outwid_me"
+            )
+
+            opacity_map[g] = st.slider(
+                "Opacity (%)", 10, 100, int(opacity_map[g]*100),
+                key=f"{g}_op_me"
+            ) / 100
+
+            width_map[g] = st.slider(
+                "Line width", 1, 6, width_map[g], key=f"{g}_lw_me"
+            )
+
+            dash_map[g] = st.selectbox(
+                "Dash", ["solid", "dash", "dot", "dashdot"],
+                index=["solid", "dash", "dot",
+                       "dashdot"].index(dash_map[g]),
+                key=f"{g}_dash_me"
+            )
+    return (
+        color_map, symbol_map, size_map,      # 1-3
+        opacity_map, width_map, dash_map,     # 4-6
+        line_color_map,                       # 7
+        outline_color_map, outline_width_map  # 8-9
+    )
