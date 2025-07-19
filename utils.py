@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 
+
 def axis_selector(df: pd.DataFrame, label: str, default: str) -> str:
     mode_key, col_key = f"{label}_mode", f"{label}_col"
     st.session_state.setdefault(mode_key, "Column")
@@ -8,9 +9,7 @@ def axis_selector(df: pd.DataFrame, label: str, default: str) -> str:
 
     mode = st.sidebar.radio(f"{label} mode", ["Column", "Ratio"], key=mode_key)
     if mode == "Column":
-        return st.sidebar.selectbox(
-            f"{label} axis", df.columns, key=col_key
-        )
+        return st.sidebar.selectbox(f"{label} axis", df.columns, key=col_key)
 
     # Режим Ratio: делаем выпадающие списки с пустым значением
     num_options = [""] + list(df.columns)

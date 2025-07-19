@@ -13,10 +13,68 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "coverage>=7.9.2",
-    "mypy>=1.17.0",
-    "pylsp-mypy>=0.7.0",
-    "pytest>=8.4.1",
-    "python-lsp-server>=1.13.0",
-    "ruff>=0.12.4",
+  "coverage>=7.9.2",
+  "mypy>=1.17.0",
+  "pylsp-mypy>=0.7.0",
+  "pytest>=8.4.1",
+  "python-lsp-server>=1.13.0",
+  "ruff>=0.12.4",
 ]
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict = true
+
+[tool.ruff]
+exclude = [
+  "build",
+  "dist",
+  ".venv",
+  "venv",
+  "site-packages",
+  ".git",
+  ".mypy_cache",
+  ".tox",
+  ".ruff_cache",
+]
+extend-exclude = ["noxfile.py"]
+line-length = 88
+indent-width = 4
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "D203",   # No blank lines after class definition.
+  "D213",   # Docstring summary on first line.
+  "E402",
+  "E722",
+  "F403",
+  "F405",
+  "I001",   # Using `reorder-python-imports`.
+  "INP001", # It is OK not to have `__init__.py` when not needed.
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+  "S101", # Asserts are okay in tests.
+  "S311", # `random` is used for simulation, not cryptography.
+  "S603", # Testbench is not a subject to attack.
+  "S605", # As above.
+  "S607", # As above.
+]
+
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.setuptools.packages.find]
+exclude = ["tests*"]

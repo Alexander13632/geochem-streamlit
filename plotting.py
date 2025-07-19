@@ -1,14 +1,21 @@
 import plotly.express as px
 import streamlit as st
 
+
 def plot_demo_table(
-    df, x_axis, y_axis,
-    group_for_plot,                 # ← новый аргумент
-    color_map_user, symbol_map_user, size_map_user,
-    log_x=False, log_y=False,
+    df,
+    x_axis,
+    y_axis,
+    group_for_plot,  # ← новый аргумент
+    color_map_user,
+    symbol_map_user,
+    size_map_user,
+    log_x=False,
+    log_y=False,
     hover_cols=None,
     styles=None,
-    bg_color="#ffffff", font_color="#000000"
+    bg_color="#ffffff",
+    font_color="#000000",
 ):
     # 1) копия исходного DataFrame
     plot_df = df.copy()
@@ -25,10 +32,8 @@ def plot_demo_table(
     size_col = "__marker_size"
     plot_df[size_col] = plot_df[grp].map(size_map_user).fillna(5)
 
-
     hover_dict = {c: True for c in hover_cols}
     hover_dict[size_col] = False
-
 
     plot_args = dict(
         x=x_axis,
@@ -37,30 +42,28 @@ def plot_demo_table(
         log_x=log_x,
         log_y=log_y,
         height=650,
-        color              = plot_df[grp].astype(str),
-        color_discrete_map = color_map_user,
-        symbol             = plot_df[grp].astype(str),
-        symbol_map         = symbol_map_user,
-        size               = plot_df[size_col],
-        hover_name         = grp,
-        hover_data = hover_dict,
+        color=plot_df[grp].astype(str),
+        color_discrete_map=color_map_user,
+        symbol=plot_df[grp].astype(str),
+        symbol_map=symbol_map_user,
+        size=plot_df[size_col],
+        hover_name=grp,
+        hover_data=hover_dict,
     )
 
-    fig = px.scatter(**plot_args)          # без size_max !
-    fig.update_traces(
-    marker=dict(sizemode="diameter", sizeref=1, sizemin=7)
-)
+    fig = px.scatter(**plot_args)  # без size_max !
+    fig.update_traces(marker=dict(sizemode="diameter", sizeref=1, sizemin=7))
 
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
     # 4) Применяем outline, opacity и пр.
-    #------------------------------------------------------------------
+    # ------------------------------------------------------------------
     if styles:
         for tr in fig.data:
             st_dict = styles.get(tr.name, {})
             tr.marker.line.color = st_dict.get("outline_color", "#000")
             tr.marker.line.width = st_dict.get("outline_width", 1.0)
-            tr.marker.opacity    = st_dict.get("opacity", 0.9)
-    
+            tr.marker.opacity = st_dict.get("opacity", 0.9)
+
     fig.update_layout(
         xaxis_title=x_axis,
         yaxis_title=y_axis,
@@ -71,44 +74,70 @@ def plot_demo_table(
     )
 
     axis_style = dict(
-        linecolor="#000000", mirror=True, showline=True,
-        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
+        linecolor="#000000",
+        mirror=True,
+        showline=True,
+        ticks="inside",
+        ticklen=6,
+        tickwidth=1,
+        tickcolor="#000000",
         gridcolor="rgba(0,0,0,0.15)",
-        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_showgrid=True,
+        minor_gridwidth=0.5,
         minor_gridcolor="rgba(0,0,0,0.05)",
     )
 
     fig.update_xaxes(
         title_text=x_axis,
         title_font=dict(size=18, color="#111111"),
-        tickfont=dict(size=14, color="#111111"),    # <--- ВАЖНО!
-        linecolor="#000000", mirror=True, showline=True,
-        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
+        tickfont=dict(size=14, color="#111111"),  # <--- ВАЖНО!
+        linecolor="#000000",
+        mirror=True,
+        showline=True,
+        ticks="inside",
+        ticklen=6,
+        tickwidth=1,
+        tickcolor="#000000",
         gridcolor="rgba(0,0,0,0.15)",
-        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_showgrid=True,
+        minor_gridwidth=0.5,
         minor_gridcolor="rgba(0,0,0,0.05)",
     )
     fig.update_yaxes(
         title_text=y_axis,
         title_font=dict(size=18, color="#111111"),
-        tickfont=dict(size=14, color="#111111"),    # <--- ВАЖНО!
-        linecolor="#000000", mirror=True, showline=True,
-        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
+        tickfont=dict(size=14, color="#111111"),  # <--- ВАЖНО!
+        linecolor="#000000",
+        mirror=True,
+        showline=True,
+        ticks="inside",
+        ticklen=6,
+        tickwidth=1,
+        tickcolor="#000000",
         gridcolor="rgba(0,0,0,0.15)",
-        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_showgrid=True,
+        minor_gridwidth=0.5,
         minor_gridcolor="rgba(0,0,0,0.05)",
-)
+    )
 
     return fig
 
 
 def plot_user_table(
-    df, x_axis, y_axis, group_for_plot,
-    color_map_user=None, symbol_map_user=None,
-    size_map_user=None, opacity_map_user=None,
-    log_x=False, log_y=False,
-    styles=None, bg_color="#ffffff", font_color="#000000",
-    hover_cols=None
+    df,
+    x_axis,
+    y_axis,
+    group_for_plot,
+    color_map_user=None,
+    symbol_map_user=None,
+    size_map_user=None,
+    opacity_map_user=None,
+    log_x=False,
+    log_y=False,
+    styles=None,
+    bg_color="#ffffff",
+    font_color="#000000",
+    hover_cols=None,
 ):
     plot_df = df.copy()
 
@@ -119,12 +148,16 @@ def plot_user_table(
         symbol_series = plot_df[group_for_plot]
         # Индивидуальный размер для каждой группы
         if size_map_user:
-            plot_df["__marker_size"] = plot_df[group_for_plot].map(size_map_user).fillna(20)
+            plot_df["__marker_size"] = (
+                plot_df[group_for_plot].map(size_map_user).fillna(20)
+            )
         else:
             plot_df["__marker_size"] = 20
         # Индивидуальная прозрачность для каждой группы
         if opacity_map_user:
-            plot_df["__marker_opacity"] = plot_df[group_for_plot].map(opacity_map_user).fillna(0.9)
+            plot_df["__marker_opacity"] = (
+                plot_df[group_for_plot].map(opacity_map_user).fillna(0.9)
+            )
         else:
             plot_df["__marker_opacity"] = 0.9
     else:
@@ -159,11 +192,8 @@ def plot_user_table(
                 plot_args["symbol_map"] = symbol_map_user
         plot_args["hover_name"] = group_for_plot
 
-
-    fig = px.scatter(**plot_args)          # без size_max !
-    fig.update_traces(
-    marker=dict(sizemode="diameter", sizeref=1, sizemin=7)
-)
+    fig = px.scatter(**plot_args)  # без size_max !
+    fig.update_traces(marker=dict(sizemode="diameter", sizeref=1, sizemin=7))
 
     # Установка индивидуальной прозрачности
     if opacity_map_user and group_for_plot and group_for_plot in plot_df.columns:
@@ -180,65 +210,82 @@ def plot_user_table(
             # Не переопределяй marker.opacity тут!
 
     fig.update_traces(marker=dict(sizemode="diameter", sizeref=2.0, sizemin=2))
-   
+
     fig.update_layout(
-            xaxis_title=x_axis,
-            yaxis_title=y_axis,
-            plot_bgcolor=bg_color,
-            paper_bgcolor=bg_color,
-            legend=dict(font=dict(color=font_color)),
-            font=dict(color=font_color),
-        )
-    
+        xaxis_title=x_axis,
+        yaxis_title=y_axis,
+        plot_bgcolor=bg_color,
+        paper_bgcolor=bg_color,
+        legend=dict(font=dict(color=font_color)),
+        font=dict(color=font_color),
+    )
 
     axis_style = dict(
-        linecolor="#000000", mirror=True, showline=True,
-        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
+        linecolor="#000000",
+        mirror=True,
+        showline=True,
+        ticks="inside",
+        ticklen=6,
+        tickwidth=1,
+        tickcolor="#000000",
         gridcolor="rgba(0,0,0,0.15)",
-        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_showgrid=True,
+        minor_gridwidth=0.5,
         minor_gridcolor="rgba(0,0,0,0.05)",
     )
     fig.update_xaxes(
         title_text=x_axis,
         title_font=dict(size=18, color="#111111"),
-        tickfont=dict(size=14, color="#111111"),    # <--- ВАЖНО!
-        linecolor="#000000", mirror=True, showline=True,
-        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
+        tickfont=dict(size=14, color="#111111"),  # <--- ВАЖНО!
+        linecolor="#000000",
+        mirror=True,
+        showline=True,
+        ticks="inside",
+        ticklen=6,
+        tickwidth=1,
+        tickcolor="#000000",
         gridcolor="rgba(0,0,0,0.15)",
-        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_showgrid=True,
+        minor_gridwidth=0.5,
         minor_gridcolor="rgba(0,0,0,0.05)",
     )
     fig.update_yaxes(
         title_text=y_axis,
         title_font=dict(size=18, color="#111111"),
-        tickfont=dict(size=14, color="#111111"),    # <--- ВАЖНО!
-        linecolor="#000000", mirror=True, showline=True,
-        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000000",
+        tickfont=dict(size=14, color="#111111"),  # <--- ВАЖНО!
+        linecolor="#000000",
+        mirror=True,
+        showline=True,
+        ticks="inside",
+        ticklen=6,
+        tickwidth=1,
+        tickcolor="#000000",
         gridcolor="rgba(0,0,0,0.15)",
-        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_showgrid=True,
+        minor_gridwidth=0.5,
         minor_gridcolor="rgba(0,0,0,0.05)",
     )
 
     return fig
 
-def plot_box_plot(
-        df,
-        x: str,
-        y: str,
-        color: str | None = None,
-        color_map: dict | None = None,
-        symbol_map: dict | None = None,
-        size_map: dict | None = None,
-        opacity_map: dict | None = None,
-        outline_color_map: dict | None = None,
-        outline_width_map: dict | None = None,
-        bg_color: str = "#ffffff",
-        font_color: str = "#000000",
-        hover_cols=None
-):
 
+def plot_box_plot(
+    df,
+    x: str,
+    y: str,
+    color: str | None = None,
+    color_map: dict | None = None,
+    symbol_map: dict | None = None,
+    size_map: dict | None = None,
+    opacity_map: dict | None = None,
+    outline_color_map: dict | None = None,
+    outline_width_map: dict | None = None,
+    bg_color: str = "#ffffff",
+    font_color: str = "#000000",
+    hover_cols=None,
+):
     # --- 1. безопасный список колонок для tooltip ----------------
-    hover_cols = hover_cols or []                       # None → []
+    hover_cols = hover_cols or []  # None → []
     hover_dict = {c: True for c in hover_cols if c in df.columns}
 
     # скрывать служебный столбец только если он реально существует
@@ -255,7 +302,7 @@ def plot_box_plot(
         height=650,
         color_discrete_map=color_map or {},
         width=None,
-        hover_data=hover_dict
+        hover_data=hover_dict,
     )
 
     # 2️⃣ Перебор трэйсов и кастомизация точек по группам
@@ -263,15 +310,15 @@ def plot_box_plot(
         group = trace.name
         marker_args = {}
         if symbol_map and group in symbol_map:
-            marker_args['symbol'] = symbol_map[group]
+            marker_args["symbol"] = symbol_map[group]
         if size_map and group in size_map:
-            marker_args['size'] = size_map[group]
+            marker_args["size"] = size_map[group]
         if opacity_map and group in opacity_map:
-            marker_args['opacity'] = opacity_map[group]
+            marker_args["opacity"] = opacity_map[group]
         if outline_color_map and group in outline_color_map:
-            marker_args.setdefault('line', {})['color'] = outline_color_map[group]
+            marker_args.setdefault("line", {})["color"] = outline_color_map[group]
         if outline_width_map and group in outline_width_map:
-            marker_args.setdefault('line', {})['width'] = outline_width_map[group]
+            marker_args.setdefault("line", {})["width"] = outline_width_map[group]
         trace.update(
             marker=marker_args,
             jitter=0.3,
@@ -283,10 +330,16 @@ def plot_box_plot(
 
     # 3️⃣ оси, сетка, шрифты
     axis_style = dict(
-        linecolor="#000", mirror=True, showline=True,
-        ticks="inside", ticklen=6, tickwidth=1, tickcolor="#000",
+        linecolor="#000",
+        mirror=True,
+        showline=True,
+        ticks="inside",
+        ticklen=6,
+        tickwidth=1,
+        tickcolor="#000",
         gridcolor="rgba(0,0,0,0.12)",
-        minor_showgrid=True, minor_gridwidth=0.5,
+        minor_showgrid=True,
+        minor_gridwidth=0.5,
         minor_gridcolor="rgba(0,0,0,0.05)",
         title_font=dict(size=18, color=font_color),
         tickfont=dict(size=14, color=font_color),
@@ -307,6 +360,3 @@ def plot_box_plot(
 
     st.plotly_chart(fig, use_container_width=True)
     return fig
-
-
-
