@@ -1,5 +1,6 @@
 import streamlit as st
 
+
 def show_sidebar_info():
     st.sidebar.markdown("""
     ## 🌋👋 GeoQuick  
@@ -17,10 +18,12 @@ def show_sidebar_info():
     """)
 
     with st.sidebar.expander("Example Google Sheets link"):
-        st.markdown("https://docs.google.com/spreadsheets/d/1w34ppQgaNuAhQXO16RI8QwtJROPldspvEUAnMaeLuyU/export?format=csv")
+        st.markdown(
+            "https://docs.google.com/spreadsheets/d/1w34ppQgaNuAhQXO16RI8QwtJROPldspvEUAnMaeLuyU/export?format=csv"
+        )
 
     st.sidebar.markdown(
-    "**💡 Ideas, feedback?**\n"
-    "[Your form is here](https://forms.gle/Hv7LfRTGpUu8kXMR9) 📝",
-     unsafe_allow_html=True
+        "**💡 Ideas, feedback?**\n"
+        "[Your form is here](https://forms.gle/Hv7LfRTGpUu8kXMR9) 📝",
+        unsafe_allow_html=True,
     )

@@ -2,25 +2,43 @@ import random
 import plotly.express as px
 import streamlit as st
 
+
 # Получить список стандартных символов Plotly (или используй свой AVAILABLE_SYMBOLS)
 def get_available_symbols():
     # Можно использовать заранее заданный список, если есть
     # return ["circle", "square", ...]
     return [
-        "circle", "square", "diamond", "cross", "x", "triangle-up", "triangle-down",
-        "triangle-left", "triangle-right", "star", "hexagram", "star-diamond", "hourglass"
+        "circle",
+        "square",
+        "diamond",
+        "cross",
+        "x",
+        "triangle-up",
+        "triangle-down",
+        "triangle-left",
+        "triangle-right",
+        "star",
+        "hexagram",
+        "star-diamond",
+        "hourglass",
     ]
+
 
 def generate_group_styles(groups):
     random.seed(42)  # чтобы цвета были всегда одинаковы для одной и той же группы
     colors = []
     for _ in groups:
-        color = "#"+''.join([random.choice('0123456789ABCDEF') for _ in range(6)])
+        color = "#" + "".join([random.choice("0123456789ABCDEF") for _ in range(6)])
         colors.append(color)
-    symbols = random.sample(get_available_symbols(), min(len(groups), len(get_available_symbols())))
+    symbols = random.sample(
+        get_available_symbols(), min(len(groups), len(get_available_symbols()))
+    )
     # Если групп больше, чем символов, повторяем символы
     while len(symbols) < len(groups):
-        symbols += random.sample(get_available_symbols(), min(len(groups)-len(symbols), len(get_available_symbols())))
+        symbols += random.sample(
+            get_available_symbols(),
+            min(len(groups) - len(symbols), len(get_available_symbols())),
+        )
     color_map = dict(zip(groups, colors))
     symbol_map = dict(zip(groups, symbols))
     return color_map, symbol_map
@@ -39,13 +57,27 @@ def group_style_editor(groups, color_map, symbol_map, size_map=None, opacity_map
             cur_size = size_map.get(group, 20)
             cur_opacity = opacity_map.get(group, 0.9)
             color = st.color_picker("Color", cur_color, key=f"user_color_{group}")
-            sym_idx = available_symbols.index(cur_symbol) if cur_symbol in available_symbols else 0
-            symbol = st.selectbox("Symbol", available_symbols, index=sym_idx, key=f"user_symbol_{group}")
+            sym_idx = (
+                available_symbols.index(cur_symbol)
+                if cur_symbol in available_symbols
+                else 0
+            )
+            symbol = st.selectbox(
+                "Symbol", available_symbols, index=sym_idx, key=f"user_symbol_{group}"
+            )
             size = st.slider("Size (px)", 5, 40, cur_size, key=f"user_size_{group}")
-            opacity = st.slider("Opacity (%)", 10, 100, int(cur_opacity*100), key=f"user_opacity_{group}") / 100
+            opacity = (
+                st.slider(
+                    "Opacity (%)",
+                    10,
+                    100,
+                    int(cur_opacity * 100),
+                    key=f"user_opacity_{group}",
+                )
+                / 100
+            )
             color_map[group] = color
             symbol_map[group] = symbol
             size_map[group] = size
             opacity_map[group] = opacity
     return color_map, symbol_map, size_map, opacity_map
-

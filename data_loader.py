@@ -1,6 +1,7 @@
 import pandas as pd
 import streamlit as st
 
+
 @st.cache_data(ttl=3600)
 def load_csv(url: str) -> pd.DataFrame:
     return pd.read_csv(url)
@@ -26,7 +27,6 @@ def get_dataframe_from_gsheet(gs_url: str):
         return pd.DataFrame(), False
 
 
-
 def get_dataframe():
     gs_url = st.sidebar.text_input("Insert link to Google Sheets (optional):", value="")
     uploaded_file = st.sidebar.file_uploader(
@@ -42,10 +42,10 @@ def get_dataframe():
 
     if uploaded_file is not None:
         try:
-            if uploaded_file.name.endswith(('.xls', '.xlsx')):
+            if uploaded_file.name.endswith((".xls", ".xlsx")):
                 df = pd.read_excel(uploaded_file)
-            elif uploaded_file.name.endswith('.txt'):
-                df = pd.read_csv(uploaded_file, sep='\t')
+            elif uploaded_file.name.endswith(".txt"):
+                df = pd.read_csv(uploaded_file, sep="\t")
             else:
                 df = pd.read_csv(uploaded_file)
             st.success("File uploaded successfully!")
