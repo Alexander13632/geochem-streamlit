@@ -1,0 +1,22 @@
+[project]
+name = "geochem-streamlit"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+  "kaleido>=1.0.0",
+  "pandas>=2.3.1",
+  "plotly>=6.2.0",
+  "streamlit>=1.47.0",
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.9.2",
+    "mypy>=1.17.0",
+    "pylsp-mypy>=0.7.0",
+    "pytest>=8.4.1",
+    "python-lsp-server>=1.13.0",
+    "ruff>=0.12.4",
+]
