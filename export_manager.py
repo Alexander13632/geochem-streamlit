@@ -69,8 +69,67 @@ class ExportManager:
         export_config = ExportManager.DEFAULT_PLOT_CONFIG.copy()
         if config:
             export_config.update(config)
-            
+        
+        # Force standard fonts for better compatibility
+        standard_font_config = {
+            "font": {
+                "family": "Arial, sans-serif",
+                "size": 14,
+                "color": "#000000"
+            },
+            "title": {
+                "font": {
+                    "family": "Arial, sans-serif", 
+                    "size": 18,
+                    "color": "#000000"
+                }
+            },
+            "xaxis": {
+                "title": {
+                    "font": {
+                        "family": "Arial, sans-serif",
+                        "size": 16,
+                        "color": "#000000"
+                    }
+                },
+                "tickfont": {
+                    "family": "Arial, sans-serif",
+                    "size": 12,
+                    "color": "#000000"
+                }
+            },
+            "yaxis": {
+                "title": {
+                    "font": {
+                        "family": "Arial, sans-serif",
+                        "size": 16,
+                        "color": "#000000"
+                    }
+                },
+                "tickfont": {
+                    "family": "Arial, sans-serif",
+                    "size": 12,
+                    "color": "#000000"
+                }
+            },
+            "legend": {
+                "font": {
+                    "family": "Arial, sans-serif",
+                    "size": 12,
+                    "color": "#000000"
+                }
+            }
+        }
+        
+        # Merge with export config
+        export_config.update(standard_font_config)
         export_fig.update_layout(**export_config)
+        
+        # Also update trace fonts if any
+        for trace in export_fig.data:
+            if hasattr(trace, 'textfont'):
+                trace.update(textfont=dict(family="Arial, sans-serif", size=12, color="#000000"))
+        
         return export_fig
     
     @staticmethod
@@ -145,7 +204,7 @@ class ExportManager:
                        filename: Optional[str] = None,
                        config: Optional[dict] = None) -> Tuple[str, str]:
         """
-        Export plot as SVG (tries kaleido, falls back to instructions)
+        Export plot as SVG with web-safe fonts for maximum compatibility
         """
         try:
             export_fig = ExportManager.prepare_figure_for_export(fig, config)
@@ -156,8 +215,35 @@ class ExportManager:
             elif not filename.endswith('.svg'):
                 filename += '.svg'
             
+            # Additional font cleanup for SVG
+            export_fig.update_layout(
+                font_family="Arial",  # Single font name, not fallback chain
+                title_font_family="Arial",
+                legend_font_family="Arial"
+            )
+            
+            # Update axes fonts
+            export_fig.update_xaxes(
+                title_font_family="Arial",
+                tickfont_family="Arial"
+            )
+            export_fig.update_yaxes(
+                title_font_family="Arial", 
+                tickfont_family="Arial"
+            )
+            
             # Try kaleido export
             svg_string = export_fig.to_image(format="svg", engine="kaleido")
+            
+            # Post-process SVG to ensure font compatibility
+            svg_string = svg_string.decode('utf-8') if isinstance(svg_string, bytes) else svg_string
+            
+            # Replace any remaining problematic fonts with Arial
+            svg_string = svg_string.replace('font-family:"Open Sans"', 'font-family:"Arial"')
+            svg_string = svg_string.replace('font-family:"Helvetica Neue"', 'font-family:"Arial"')
+            svg_string = svg_string.replace('font-family:"Segoe UI"', 'font-family:"Arial"')
+            svg_string = svg_string.replace('font-family:sans-serif', 'font-family:"Arial"')
+            
             logger.info(f"Successfully exported SVG: {filename}")
             return svg_string, filename
             
