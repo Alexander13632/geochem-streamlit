@@ -230,6 +230,8 @@ def show_tas(
         size_map_user=size_map_user,
         styles=styles
     )
-    st.plotly_chart(fig, use_container_width=True)
-    st.stop()
+    st.plotly_chart(fig, use_container_width=True, key="tas_diagram_chart")
+    
+    # ВМЕСТО st.stop() возвращаем fig и plot_df для экспорта
+    return fig, df  # Возвращаем для экспорта
 
