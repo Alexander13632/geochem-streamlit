@@ -57,13 +57,12 @@ class ExportManager:
     def prepare_figure_for_export(fig: go.Figure, 
                                 config: Optional[dict] = None) -> go.Figure:
         """
-        Prepare figure for export by applying export-specific settings
-        CAREFULLY preserving marker symbols
+        Prepare figure for export - replace text fonts but preserve marker symbols
         """
         export_fig = fig.to_dict()  # Deep copy
         export_fig = go.Figure(export_fig)
         
-        # Apply basic configuration first
+        # Apply basic configuration (size, margins, etc.)
         export_config = {
             "width": 1200,
             "height": 800,
@@ -73,52 +72,44 @@ class ExportManager:
         if config:
             export_config.update(config)
         
-        # Apply ONLY safe layout updates that don't affect markers
         export_fig.update_layout(**export_config)
-        
-        # Update ONLY specific text elements, avoiding global font changes
-        # This preserves marker symbol fonts
-        try:
-            # Update title font if title exists
-            if export_fig.layout.title and export_fig.layout.title.text:
-                export_fig.update_layout(
-                    title_font_family="Arial",
-                    title_font_size=18,
-                    title_font_color="#000000"
-                )
-            
-            # Update axes fonts carefully
-            export_fig.update_xaxes(
-                title_font_family="Arial",
-                title_font_size=16, 
-                title_font_color="#000000",
-                tickfont_family="Arial",
-                tickfont_size=12,
-                tickfont_color="#000000"
-            )
-            
-            export_fig.update_yaxes(
-                title_font_family="Arial",
-                title_font_size=16,
-                title_font_color="#000000", 
-                tickfont_family="Arial",
-                tickfont_size=12,
-                tickfont_color="#000000"
-            )
-            
-            # Update legend font if legend exists
-            if export_fig.layout.showlegend:
-                export_fig.update_layout(
-                    legend_font_family="Arial",
-                    legend_font_size=12,
-                    legend_font_color="#000000"
-                )
-                
-        except Exception as e:
-            logger.warning(f"Font update warning: {e}")
-            # Continue anyway - better to have working export with original fonts
-            
         return export_fig
+    
+    @staticmethod
+    def safe_font_replacement(fig: go.Figure) -> go.Figure:
+        """
+        Replace only problematic fonts with safe ones, preserving symbols
+        """
+        # Create a copy
+        safe_fig = go.Figure(fig)
+        
+        # Safe fonts that work in Adobe and don't break symbols
+        SAFE_FONTS = ["Helvetica", "Arial", "Times", "Courier"]
+        
+        # Update layout text fonts ONLY (not affecting markers)
+        safe_fig.update_layout(
+            # Main layout font - affects general text
+            font=dict(family="Helvetica", size=14, color="#000000"),
+            
+            # Title font
+            title_font=dict(family="Helvetica", size=18, color="#000000"),
+            
+            # Legend font 
+            legend_font=dict(family="Helvetica", size=12, color="#000000")
+        )
+        
+        # Update axes fonts specifically
+        safe_fig.update_xaxes(
+            title_font=dict(family="Helvetica", size=16, color="#000000"),
+            tickfont=dict(family="Helvetica", size=12, color="#000000")
+        )
+        
+        safe_fig.update_yaxes(
+            title_font=dict(family="Helvetica", size=16, color="#000000"),
+            tickfont=dict(family="Helvetica", size=12, color="#000000")
+        )
+        
+        return safe_fig
     
     @staticmethod
     def export_plot_html(fig: go.Figure, 
@@ -167,7 +158,7 @@ class ExportManager:
                        filename: Optional[str] = None,
                        config: Optional[dict] = None) -> Tuple[bytes, str]:
         """
-        Export plot as PNG (tries kaleido, falls back to instructions)
+        Export plot as PNG - no font changes needed for raster
         """
         try:
             export_fig = ExportManager.prepare_figure_for_export(fig, config)
@@ -178,7 +169,7 @@ class ExportManager:
             elif not filename.endswith('.png'):
                 filename += '.png'
             
-            # Try kaleido export
+            # PNG doesn't need font replacement
             img_bytes = export_fig.to_image(format="png", engine="kaleido")
             logger.info(f"Successfully exported PNG: {filename}")
             return img_bytes, filename
@@ -192,10 +183,12 @@ class ExportManager:
                        filename: Optional[str] = None,
                        config: Optional[dict] = None) -> Tuple[str, str]:
         """
-        Export plot as SVG with web-safe fonts for maximum compatibility
+        Export plot as SVG with safe fonts for Adobe compatibility
         """
         try:
             export_fig = ExportManager.prepare_figure_for_export(fig, config)
+            # Apply safe font replacement for SVG
+            export_fig = ExportManager.safe_font_replacement(export_fig)
             
             if not filename:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -203,34 +196,24 @@ class ExportManager:
             elif not filename.endswith('.svg'):
                 filename += '.svg'
             
-            # Try kaleido export
+            # Export SVG 
             svg_string = export_fig.to_image(format="svg", engine="kaleido")
-            
-            # Post-process SVG to ensure font compatibility
             svg_string = svg_string.decode('utf-8') if isinstance(svg_string, bytes) else svg_string
             
-            # Replace ONLY text fonts, be careful not to break symbol fonts
-            # Look for font-family in text elements, not in marker symbols
-            import re
-            
-            # Replace font families in text elements but preserve symbol fonts
-            svg_string = re.sub(
-                r'font-family:"[^"]*"(?![^<]*</symbol>)(?![^<]*</marker>)', 
-                'font-family:"Arial"', 
-                svg_string
-            )
-            
-            # Alternative safer approach - only replace known problematic fonts
-            problematic_fonts = [
-                'font-family:"Open Sans"',
-                'font-family:"Helvetica Neue"', 
-                'font-family:"Segoe UI"',
-                'font-family:"system-ui"',
-                'font-family:"Roboto"'
+            # Post-process: replace any remaining problematic fonts
+            problematic_replacements = [
+                ('font-family:"Open Sans"', 'font-family:"Helvetica"'),
+                ('font-family:"Segoe UI"', 'font-family:"Helvetica"'), 
+                ('font-family:"system-ui"', 'font-family:"Helvetica"'),
+                ('font-family:"Roboto"', 'font-family:"Helvetica"'),
+                ('font-family:"Inter"', 'font-family:"Helvetica"'),
+                # Keep Liberation and similar problematic fonts out
+                ('font-family:"LiberationSans"', 'font-family:"Helvetica"'),
+                ('font-family:"Liberation Sans"', 'font-family:"Helvetica"'),
             ]
             
-            for problem_font in problematic_fonts:
-                svg_string = svg_string.replace(problem_font, 'font-family:"Arial"')
+            for old_font, new_font in problematic_replacements:
+                svg_string = svg_string.replace(old_font, new_font)
             
             logger.info(f"Successfully exported SVG: {filename}")
             return svg_string, filename
@@ -244,10 +227,12 @@ class ExportManager:
                        filename: Optional[str] = None,
                        config: Optional[dict] = None) -> Tuple[bytes, str]:
         """
-        Export plot as PDF with web-safe fonts for maximum compatibility
+        Export plot as PDF with safe fonts for Adobe compatibility
         """
         try:
             export_fig = ExportManager.prepare_figure_for_export(fig, config)
+            # Apply safe font replacement for PDF
+            export_fig = ExportManager.safe_font_replacement(export_fig)
             
             if not filename:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -255,10 +240,7 @@ class ExportManager:
             elif not filename.endswith('.pdf'):
                 filename += '.pdf'
             
-            # DON'T override layout fonts - this breaks marker symbols
-            # The prepare_figure_for_export already handles text fonts properly
-            
-            # Try kaleido export with PDF-specific settings
+            # Export PDF
             pdf_bytes = export_fig.to_image(
                 format="pdf", 
                 engine="kaleido",
