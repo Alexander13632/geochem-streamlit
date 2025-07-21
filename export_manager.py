@@ -3,10 +3,17 @@ Export Manager for GeoQuick
 --------------------------
 Provides helpers to export Plotly figures and data while **keeping true vector output**
 for SVG and PDF formats (i.e. marker symbols remain vectors rather than being
-rasterised). The main strategy is to convert any *WebGL* traces (e.g. `scattergl`)
-into their standard SVG‑friendly counterparts (`scatter`) **only at export time**.
-This leaves your interactive web app performance untouched while guaranteeing
-fully‑scalable figures in the exported files.
+rasterised). In addition it guarantees **complete PNG snapshots** – even when
+your figures contain WebGL traces like `scattergl`.
+
+Strategy
+~~~~~~~~
+* Convert *any* WebGL trace (whose type ends with "gl") to its standard SVG‑
+  friendly counterpart *only at export time*.
+* Apply layout tweaks (width, height, margins, fonts) uniformly before export.
+
+This keeps the interactive web‑app fast while ensuring that SVG, PDF *and now
+PNG* contain every marker.
 """
 
 from __future__ import annotations
@@ -24,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 # ─── Utility functions ────────────────────────────────────────────────────────
+
 
 def _is_cloud_environment() -> bool:
     """Detect Streamlit Cloud / Render / Heroku etc. for limited export modes."""
@@ -61,13 +69,7 @@ class ExportManager:
     # ── Private helpers ────────────────────────────────────────────────────
     @staticmethod
     def _vectorise_traces(fig: go.Figure) -> go.Figure:
-        """Return a *copy* of *fig* where WebGL traces are swapped to SVG ones.
-
-        Any trace whose type ends with "gl" (e.g. ``scattergl``) will be
-        converted to its non‑GL counterpart (``scatter``). This is crucial
-        because Kaleido rasterises WebGL layers when exporting to vector
-        formats.
-        """
+        """Return a *copy* of *fig* with WebGL traces swapped to SVG ones."""
         fig_dict = fig.to_plotly_json()
         for trace in fig_dict.get("data", []):
             t_type: str = trace.get("type", "")
@@ -109,8 +111,12 @@ class ExportManager:
     @staticmethod
     def export_png(fig: go.Figure, filename: Optional[str] = None,
                    cfg: Optional[dict] = None) -> Tuple[bytes, str]:
+        """Export PNG **with all symbols intact** (no missing WebGL layers)."""
         try:
-            fig_out = ExportManager._prepare(fig, cfg)
+            # 🆕 Ensure WebGL traces are down‑converted before Kaleido snapshot
+            fig_out = ExportManager._vectorise_traces(
+                ExportManager._prepare(fig, cfg)
+            )
             if not filename:
                 filename = f"geoquick_plot_{datetime.now():%Y%m%d_%H%M%S}.png"
             elif not filename.endswith(".png"):
