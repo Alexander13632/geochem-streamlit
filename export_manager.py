@@ -1,15 +1,11 @@
 """
-Export Manager for GeoQuick
-Handles export of plots and data in various formats
+Export Manager for GeoQuick - Simple and Cloud-Friendly Version
 """
-import io
 import logging
 from typing import Optional, Tuple
 import streamlit as st
-import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
-import plotly.io as pio
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,145 +17,34 @@ class ExportError(Exception):
     pass
 
 
-def is_cloud_environment():
-    """Check if running in Streamlit Cloud environment"""
-    try:
-        import os
-        # Common indicators of cloud environments
-        cloud_indicators = [
-            'STREAMLIT_SHARING',
-            'STREAMLIT_CLOUD', 
-            'RENDER',
-            'HEROKU',
-            'REPLIT_DEPLOYMENT'
-        ]
-        return any(indicator in os.environ for indicator in cloud_indicators)
-    except:
-        return False
-
-
 class ExportManager:
-    """Manages export functionality for plots and data"""
-    
-    # Default export settings with standard fonts
-    DEFAULT_PLOT_CONFIG = {
-        "width": 1200,
-        "height": 800,
-        "margin": dict(l=80, r=120, t=60, b=60),
-        "showlegend": False,
-        # Standard fonts that work everywhere
-        "font_family": "Arial",
-        "font_size": 14,
-        "font_color": "#000000"
-    }
+    """Simple export functionality that works everywhere"""
     
     @staticmethod
     def prepare_figure_for_export(fig: go.Figure, 
                                 config: Optional[dict] = None) -> go.Figure:
-        """
-        Prepare figure for export - replace text fonts but preserve marker symbols
-        """
+        """Simple figure preparation for export"""
         export_fig = fig.to_dict()  # Deep copy
         export_fig = go.Figure(export_fig)
         
-        # Apply basic configuration (size, margins, etc.)
-        export_config = {
-            "width": 1200,
-            "height": 800,
-            "margin": dict(l=80, r=120, t=60, b=60),
-            "showlegend": False
-        }
+        # Basic export settings
         if config:
-            export_config.update(config)
-        
-        export_fig.update_layout(**export_config)
-        return export_fig
-    
-    @staticmethod
-    def safe_font_replacement(fig: go.Figure) -> go.Figure:
-        """
-        Replace only problematic fonts with safe ones, preserving symbols
-        """
-        # Create a copy
-        safe_fig = go.Figure(fig)
-        
-        # Safe fonts that work in Adobe and don't break symbols
-        SAFE_FONTS = ["Helvetica", "Arial", "Times", "Courier"]
-        
-        # Update layout text fonts ONLY (not affecting markers)
-        safe_fig.update_layout(
-            # Main layout font - affects general text
-            font=dict(family="Helvetica", size=14, color="#000000"),
-            
-            # Title font
-            title_font=dict(family="Helvetica", size=18, color="#000000"),
-            
-            # Legend font 
-            legend_font=dict(family="Helvetica", size=12, color="#000000")
-        )
-        
-        # Update axes fonts specifically
-        safe_fig.update_xaxes(
-            title_font=dict(family="Helvetica", size=16, color="#000000"),
-            tickfont=dict(family="Helvetica", size=12, color="#000000")
-        )
-        
-        safe_fig.update_yaxes(
-            title_font=dict(family="Helvetica", size=16, color="#000000"),
-            tickfont=dict(family="Helvetica", size=12, color="#000000")
-        )
-        
-        return safe_fig
-    
-    @staticmethod
-    def export_plot_html(fig: go.Figure, 
-                        filename: Optional[str] = None,
-                        config: Optional[dict] = None) -> Tuple[str, str]:
-        """
-        Export plot as interactive HTML (cloud-friendly fallback)
-        
-        Args:
-            fig: Plotly figure to export
-            filename: Custom filename (optional)
-            config: Custom export configuration
-            
-        Returns:
-            Tuple of (html_string, filename)
-        """
-        try:
-            export_fig = ExportManager.prepare_figure_for_export(fig, config)
-            
-            # Generate filename if not provided
-            if not filename:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f"geoquick_plot_{timestamp}.html"
-            elif not filename.endswith('.html'):
-                filename += '.html'
-            
-            # Export to HTML with embedded plotly.js
-            html_string = export_fig.to_html(
-                include_plotlyjs='inline',
-                config={
-                    'displayModeBar': True,
-                    'displaylogo': False,
-                    'modeBarButtonsToRemove': ['pan2d', 'lasso2d']
-                }
+            export_fig.update_layout(**config)
+        else:
+            export_fig.update_layout(
+                width=1200,
+                height=800,
+                margin=dict(l=80, r=120, t=60, b=60),
+                showlegend=False
             )
-            
-            logger.info(f"Successfully exported HTML: {filename}")
-            return html_string, filename
-            
-        except Exception as e:
-            logger.error(f"HTML export failed: {str(e)}")
-            raise ExportError(f"Failed to export HTML: {str(e)}")
+        
+        return export_fig
     
     @staticmethod
     def export_plot_png(fig: go.Figure, 
                        filename: Optional[str] = None,
                        config: Optional[dict] = None) -> Tuple[bytes, str]:
-        """
-        Export plot as PNG - no font changes needed for raster
-        """
+        """Export plot as PNG"""
         try:
             export_fig = ExportManager.prepare_figure_for_export(fig, config)
             
@@ -169,7 +54,6 @@ class ExportManager:
             elif not filename.endswith('.png'):
                 filename += '.png'
             
-            # PNG doesn't need font replacement
             img_bytes = export_fig.to_image(format="png", engine="kaleido")
             logger.info(f"Successfully exported PNG: {filename}")
             return img_bytes, filename
@@ -182,13 +66,9 @@ class ExportManager:
     def export_plot_svg(fig: go.Figure, 
                        filename: Optional[str] = None,
                        config: Optional[dict] = None) -> Tuple[str, str]:
-        """
-        Export plot as SVG with safe fonts for Adobe compatibility
-        """
+        """Export plot as SVG"""
         try:
             export_fig = ExportManager.prepare_figure_for_export(fig, config)
-            # Apply safe font replacement for SVG
-            export_fig = ExportManager.safe_font_replacement(export_fig)
             
             if not filename:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -196,24 +76,8 @@ class ExportManager:
             elif not filename.endswith('.svg'):
                 filename += '.svg'
             
-            # Export SVG 
             svg_string = export_fig.to_image(format="svg", engine="kaleido")
             svg_string = svg_string.decode('utf-8') if isinstance(svg_string, bytes) else svg_string
-            
-            # Post-process: replace any remaining problematic fonts
-            problematic_replacements = [
-                ('font-family:"Open Sans"', 'font-family:"Helvetica"'),
-                ('font-family:"Segoe UI"', 'font-family:"Helvetica"'), 
-                ('font-family:"system-ui"', 'font-family:"Helvetica"'),
-                ('font-family:"Roboto"', 'font-family:"Helvetica"'),
-                ('font-family:"Inter"', 'font-family:"Helvetica"'),
-                # Keep Liberation and similar problematic fonts out
-                ('font-family:"LiberationSans"', 'font-family:"Helvetica"'),
-                ('font-family:"Liberation Sans"', 'font-family:"Helvetica"'),
-            ]
-            
-            for old_font, new_font in problematic_replacements:
-                svg_string = svg_string.replace(old_font, new_font)
             
             logger.info(f"Successfully exported SVG: {filename}")
             return svg_string, filename
@@ -226,13 +90,9 @@ class ExportManager:
     def export_plot_pdf(fig: go.Figure, 
                        filename: Optional[str] = None,
                        config: Optional[dict] = None) -> Tuple[bytes, str]:
-        """
-        Export plot as PDF with safe fonts for Adobe compatibility
-        """
+        """Export plot as PDF"""
         try:
             export_fig = ExportManager.prepare_figure_for_export(fig, config)
-            # Apply safe font replacement for PDF
-            export_fig = ExportManager.safe_font_replacement(export_fig)
             
             if not filename:
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -240,14 +100,7 @@ class ExportManager:
             elif not filename.endswith('.pdf'):
                 filename += '.pdf'
             
-            # Export PDF
-            pdf_bytes = export_fig.to_image(
-                format="pdf", 
-                engine="kaleido",
-                width=export_fig.layout.width,
-                height=export_fig.layout.height
-            )
-            
+            pdf_bytes = export_fig.to_image(format="pdf", engine="kaleido")
             logger.info(f"Successfully exported PDF: {filename}")
             return pdf_bytes, filename
             
@@ -259,94 +112,59 @@ class ExportManager:
 def render_export_buttons(fig: go.Figure, 
                          export_config: Optional[dict] = None,
                          key_prefix: str = "export") -> None:
-    """
-    Render export buttons in Streamlit interface with cloud-friendly fallbacks
-    """
+    """Simple export buttons that work everywhere"""
     st.markdown("### 📥 Export Plot")
     
-    is_cloud = is_cloud_environment()
+    col1, col2, col3 = st.columns(3)
     
-    if is_cloud:
-        # Cloud environment - offer HTML as primary option
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            try:
-                html_string, filename = ExportManager.export_plot_html(fig, config=export_config)
-                st.download_button(
-                    label="📊 Save as HTML",
-                    data=html_string,
-                    file_name=filename,
-                    mime="text/html",
-                    use_container_width=True,
-                    key=f"{key_prefix}_html",
-                    help="Interactive HTML file that works in any browser"
-                )
-            except ExportError as e:
-                st.error(f"HTML export failed: {str(e)}")
-        
-        with col2:
-            st.markdown("""
-            **📸 For PNG/PDF export:**
-            1. Use the camera icon in the plot toolbar above
-            2. Or right-click the plot → "Save image as..."
-            3. For vector graphics, try the HTML export
-            """)
-            
-    else:
-        # Local environment - full functionality
-        col1, col2, col3 = st.columns(3)
-        
-        # PNG Export
-        with col1:
-            try:
-                img_bytes, filename = ExportManager.export_plot_png(fig, config=export_config)
-                st.download_button(
-                    label="📊 Save PNG",
-                    data=img_bytes,
-                    file_name=filename,
-                    mime="image/png",
-                    use_container_width=True,
-                    key=f"{key_prefix}_png"
-                )
-            except ExportError:
-                st.info("Use camera icon in plot toolbar for PNG export")
-        
-        # SVG Export
-        with col2:
-            try:
-                svg_string, filename = ExportManager.export_plot_svg(fig, config=export_config)
-                st.download_button(
-                    label="🎨 Save SVG",
-                    data=svg_string,
-                    file_name=filename,
-                    mime="image/svg+xml",
-                    use_container_width=True,
-                    key=f"{key_prefix}_svg"
-                )
-            except ExportError:
-                st.info("SVG export not available in cloud")
-        
-        # PDF Export
-        with col3:
-            try:
-                pdf_bytes, filename = ExportManager.export_plot_pdf(fig, config=export_config)
-                st.download_button(
-                    label="📄 Save PDF",
-                    data=pdf_bytes,
-                    file_name=filename,
-                    mime="application/pdf",
-                    use_container_width=True,
-                    key=f"{key_prefix}_pdf"
-                )
-            except ExportError:
-                st.info("PDF export not available in cloud")
+    # PNG Export
+    with col1:
+        try:
+            img_bytes, filename = ExportManager.export_plot_png(fig, config=export_config)
+            st.download_button(
+                label="📊 Save PNG",
+                data=img_bytes,
+                file_name=filename,
+                mime="image/png",
+                use_container_width=True,
+                key=f"{key_prefix}_png"
+            )
+        except:
+            st.info("📸 Use camera icon in plot toolbar")
+    
+    # SVG Export  
+    with col2:
+        try:
+            svg_string, filename = ExportManager.export_plot_svg(fig, config=export_config)
+            st.download_button(
+                label="🎨 Save SVG", 
+                data=svg_string,
+                file_name=filename,
+                mime="image/svg+xml",
+                use_container_width=True,
+                key=f"{key_prefix}_svg"
+            )
+        except:
+            st.info("📸 Use camera icon in plot toolbar")
+    
+    # PDF Export
+    with col3:
+        try:
+            pdf_bytes, filename = ExportManager.export_plot_pdf(fig, config=export_config)
+            st.download_button(
+                label="📄 Save PDF",
+                data=pdf_bytes, 
+                file_name=filename,
+                mime="application/pdf",
+                use_container_width=True,
+                key=f"{key_prefix}_pdf"
+            )
+        except:
+            st.info("📸 Use camera icon in plot toolbar")
 
 
 def render_export_settings() -> dict:
-    """
-    Render export settings UI and return configuration
-    """
+    """Simple export settings"""
     with st.expander("🔧 Export Settings", expanded=False):
         col1, col2 = st.columns(2)
         
@@ -360,8 +178,8 @@ def render_export_settings() -> dict:
         
         with col2:
             show_legend = st.checkbox("Show legend in export", value=False)
-            
-        # Advanced margins
+        
+        # Margins
         with st.expander("Margins", expanded=False):
             col_l, col_r, col_t, col_b = st.columns(4)
             left = col_l.number_input("Left", 20, 200, 80)
