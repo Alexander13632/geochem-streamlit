@@ -15,6 +15,7 @@ from editors import inherit_styles_from_typeloc
 from filter_bar import filter_dataframe
 from sidebar_info import show_sidebar_info
 from tas_plot import show_tas
+from export_manager import render_export_buttons, render_export_settings
 
 
 show_sidebar_info()
@@ -104,6 +105,7 @@ def build_group_style(df, group_for_plot, base_color, base_symbol, base_size):
 #   MULTIELEMENTAL  PLOT
 # --------------------------------------------------------------
 if plot_type == "Multielemental plot":
+    fig = None
     group_col: str | None = None
     elems: list[str] = []
     norm_set: dict[str, float] | None = None
@@ -178,13 +180,16 @@ if plot_type == "Multielemental plot":
             outline_width_map=outline_width_map,
             log_y=True,
         )
-        st.plotly_chart(fig, use_container_width=True)
-
+        st.plotly_chart(fig, use_container_width=True, key="multielemental_chart")
+        if fig is not None:
+            st.markdown("---")
+            export_config = render_export_settings()
+            render_export_buttons(fig, export_config, "export_multielemental")
     st.stop()
 
 
 if plot_type == "TAS diagram":
-    show_tas(
+    fig, plot_df_tas = show_tas(
         df=df,
         user_data=user_data,
         base_color=base_color,
@@ -195,6 +200,12 @@ if plot_type == "TAS diagram":
         filter_dataframe=filter_dataframe,
         hover_cols=hover_cols,
     )
+    
+    # Экспорт для TAS диаграммы
+    st.markdown("---")
+    export_config = render_export_settings()
+    render_export_buttons(fig, export_config, "export_tas")
+    st.stop()
 
 
 # --- Selectors for axes and grouping ---
@@ -431,6 +442,12 @@ elif plot_type == "Box plot":
         st.stop()
 
 
+    if 'fig' in locals() and fig is not None:
+        st.markdown("---")
+        export_config = render_export_settings()
+        export_key_prefix = f"export_{plot_type.lower().replace(' ', '_')}"
+        render_export_buttons(fig, export_config, export_key_prefix)
+
 else:
     st.warning("Unknown plot type selected.")
     st.stop()
@@ -445,31 +462,14 @@ export_fig.update_layout(
     width=1200, height=800, margin=dict(l=80, r=120, t=60, b=60), showlegend=False
 )
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    try:
-        st.download_button(
-            "Save plot (PNG)", export_fig.to_image(format="png"), file_name="plot.png"
-        )
-    except Exception as e:
-        st.warning(
-            "PNG export temporarily unavailable. You can use the screenshot feature in the plot toolbar instead."
-        )
-
-with col2:
-    st.download_button(
-        "Save data (CSV)", plot_df.to_csv(index=False), file_name="data.csv"
-    )
-
-with col3:
-    try:
-        st.download_button(
-            "Save plot (PDF)",
-            export_fig.to_image(format="pdf"),
-            file_name="plot.pdf",
-            mime="application/pdf",
-        )
-    except Exception as e:
-        st.warning(
-            "PDF export temporarily unavailable. You can use the screenshot feature in the plot toolbar instead."
-        )
+# ─── UNIVERSAL EXPORT SECTION ─────────────────────────────────────────
+# Эта секция будет работать для всех типов графиков
+if 'fig' in locals() and fig is not None:
+    st.markdown("---")
+    
+    # Render export settings
+    export_config = render_export_settings()
+    
+    # Render export buttons
+    export_key_prefix = f"export_{plot_type.lower().replace(' ', '_')}"
+    render_export_buttons(fig, export_config, export_key_prefix)
