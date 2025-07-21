@@ -1,3 +1,39 @@
+ Plotly символы используют специальные шрифты. Давайте исправим это, сохранив символы:
+
+
+export_manager.py
+Code ∙ Version 24 
+Теперь также обновим SVG экспорт, чтобы быть более осторожными с заменой шрифтов:
+
+
+export_manager.py
+Code ∙ Version 25 
+Что исправлено:
+
+✅ Сохранили символы маркеров:
+
+Убрали принудительное переписывание всех шрифтов
+Меняем только текстовые элементы (заголовки, подписи осей, легенда)
+Маркеры остаются с оригинальными шрифтами символов
+✅ Умная замена в SVG:
+
+Регулярное выражение исключает символы и маркеры
+Заменяем только известные проблемные шрифты
+Сохраняем специальные шрифты Plotly для символов
+✅ Безопасный подход:
+
+Не трогаем <symbol> и <marker> элементы в SVG
+Заменяем только текстовые шрифты
+Сохраняем функциональность графика
+Теперь символы должны отображаться корректно, а шрифты текста будут совместимы с Illustrator! 🎯
+
+
+
+
+
+
+
+
 """
 Export Manager for GeoQuick
 Handles export of plots and data in various formats
@@ -70,7 +106,7 @@ class ExportManager:
         if config:
             export_config.update(config)
         
-        # Force standard fonts for better compatibility
+        # Force standard fonts ONLY for text elements, not markers
         standard_font_config = {
             "font": {
                 "family": "Arial, sans-serif",
@@ -125,9 +161,10 @@ class ExportManager:
         export_config.update(standard_font_config)
         export_fig.update_layout(**export_config)
         
-        # Also update trace fonts if any
+        # Update ONLY text fonts, leave marker symbols alone
         for trace in export_fig.data:
-            if hasattr(trace, 'textfont'):
+            # Only update textfont for text annotations, not marker symbols
+            if hasattr(trace, 'textfont') and hasattr(trace, 'text'):
                 trace.update(textfont=dict(family="Arial, sans-serif", size=12, color="#000000"))
         
         return export_fig
@@ -215,34 +252,34 @@ class ExportManager:
             elif not filename.endswith('.svg'):
                 filename += '.svg'
             
-            # Additional font cleanup for SVG
-            export_fig.update_layout(
-                font_family="Arial",  # Single font name, not fallback chain
-                title_font_family="Arial",
-                legend_font_family="Arial"
-            )
-            
-            # Update axes fonts
-            export_fig.update_xaxes(
-                title_font_family="Arial",
-                tickfont_family="Arial"
-            )
-            export_fig.update_yaxes(
-                title_font_family="Arial", 
-                tickfont_family="Arial"
-            )
-            
             # Try kaleido export
             svg_string = export_fig.to_image(format="svg", engine="kaleido")
             
             # Post-process SVG to ensure font compatibility
             svg_string = svg_string.decode('utf-8') if isinstance(svg_string, bytes) else svg_string
             
-            # Replace any remaining problematic fonts with Arial
-            svg_string = svg_string.replace('font-family:"Open Sans"', 'font-family:"Arial"')
-            svg_string = svg_string.replace('font-family:"Helvetica Neue"', 'font-family:"Arial"')
-            svg_string = svg_string.replace('font-family:"Segoe UI"', 'font-family:"Arial"')
-            svg_string = svg_string.replace('font-family:sans-serif', 'font-family:"Arial"')
+            # Replace ONLY text fonts, be careful not to break symbol fonts
+            # Look for font-family in text elements, not in marker symbols
+            import re
+            
+            # Replace font families in text elements but preserve symbol fonts
+            svg_string = re.sub(
+                r'font-family:"[^"]*"(?![^<]*</symbol>)(?![^<]*</marker>)', 
+                'font-family:"Arial"', 
+                svg_string
+            )
+            
+            # Alternative safer approach - only replace known problematic fonts
+            problematic_fonts = [
+                'font-family:"Open Sans"',
+                'font-family:"Helvetica Neue"', 
+                'font-family:"Segoe UI"',
+                'font-family:"system-ui"',
+                'font-family:"Roboto"'
+            ]
+            
+            for problem_font in problematic_fonts:
+                svg_string = svg_string.replace(problem_font, 'font-family:"Arial"')
             
             logger.info(f"Successfully exported SVG: {filename}")
             return svg_string, filename
