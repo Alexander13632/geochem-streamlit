@@ -41,12 +41,16 @@ def is_cloud_environment():
 class ExportManager:
     """Manages export functionality for plots and data"""
     
-    # Default export settings
+    # Default export settings with standard fonts
     DEFAULT_PLOT_CONFIG = {
         "width": 1200,
         "height": 800,
         "margin": dict(l=80, r=120, t=60, b=60),
-        "showlegend": False
+        "showlegend": False,
+        # Standard fonts that work everywhere
+        "font_family": "Arial",
+        "font_size": 14,
+        "font_color": "#000000"
     }
     
     @staticmethod
@@ -257,7 +261,7 @@ class ExportManager:
                        filename: Optional[str] = None,
                        config: Optional[dict] = None) -> Tuple[bytes, str]:
         """
-        Export plot as PDF (tries kaleido, falls back to instructions)
+        Export plot as PDF with web-safe fonts for maximum compatibility
         """
         try:
             export_fig = ExportManager.prepare_figure_for_export(fig, config)
@@ -268,8 +272,32 @@ class ExportManager:
             elif not filename.endswith('.pdf'):
                 filename += '.pdf'
             
-            # Try kaleido export
-            pdf_bytes = export_fig.to_image(format="pdf", engine="kaleido")
+            # Additional font settings for PDF compatibility
+            # Use only basic fonts that exist in PDF standards
+            export_fig.update_layout(
+                font_family="Arial",  # Standard PDF font
+                title_font_family="Arial",
+                legend_font_family="Arial"
+            )
+            
+            # Update axes fonts to standard PDF fonts
+            export_fig.update_xaxes(
+                title_font_family="Arial",
+                tickfont_family="Arial"
+            )
+            export_fig.update_yaxes(
+                title_font_family="Arial", 
+                tickfont_family="Arial"
+            )
+            
+            # Try kaleido export with PDF-specific settings
+            pdf_bytes = export_fig.to_image(
+                format="pdf", 
+                engine="kaleido",
+                width=export_fig.layout.width,
+                height=export_fig.layout.height
+            )
+            
             logger.info(f"Successfully exported PDF: {filename}")
             return pdf_bytes, filename
             
