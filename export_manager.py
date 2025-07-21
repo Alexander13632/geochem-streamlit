@@ -58,83 +58,66 @@ class ExportManager:
                                 config: Optional[dict] = None) -> go.Figure:
         """
         Prepare figure for export by applying export-specific settings
-        
-        Args:
-            fig: Original plotly figure
-            config: Custom configuration dict
-            
-        Returns:
-            Copy of figure with export settings applied
+        CAREFULLY preserving marker symbols
         """
         export_fig = fig.to_dict()  # Deep copy
         export_fig = go.Figure(export_fig)
         
-        # Apply configuration
-        export_config = ExportManager.DEFAULT_PLOT_CONFIG.copy()
+        # Apply basic configuration first
+        export_config = {
+            "width": 1200,
+            "height": 800,
+            "margin": dict(l=80, r=120, t=60, b=60),
+            "showlegend": False
+        }
         if config:
             export_config.update(config)
         
-        # Force standard fonts ONLY for text elements, not markers
-        standard_font_config = {
-            "font": {
-                "family": "Arial, sans-serif",
-                "size": 14,
-                "color": "#000000"
-            },
-            "title": {
-                "font": {
-                    "family": "Arial, sans-serif", 
-                    "size": 18,
-                    "color": "#000000"
-                }
-            },
-            "xaxis": {
-                "title": {
-                    "font": {
-                        "family": "Arial, sans-serif",
-                        "size": 16,
-                        "color": "#000000"
-                    }
-                },
-                "tickfont": {
-                    "family": "Arial, sans-serif",
-                    "size": 12,
-                    "color": "#000000"
-                }
-            },
-            "yaxis": {
-                "title": {
-                    "font": {
-                        "family": "Arial, sans-serif",
-                        "size": 16,
-                        "color": "#000000"
-                    }
-                },
-                "tickfont": {
-                    "family": "Arial, sans-serif",
-                    "size": 12,
-                    "color": "#000000"
-                }
-            },
-            "legend": {
-                "font": {
-                    "family": "Arial, sans-serif",
-                    "size": 12,
-                    "color": "#000000"
-                }
-            }
-        }
-        
-        # Merge with export config
-        export_config.update(standard_font_config)
+        # Apply ONLY safe layout updates that don't affect markers
         export_fig.update_layout(**export_config)
         
-        # Update ONLY text fonts, leave marker symbols alone
-        for trace in export_fig.data:
-            # Only update textfont for text annotations, not marker symbols
-            if hasattr(trace, 'textfont') and hasattr(trace, 'text'):
-                trace.update(textfont=dict(family="Arial, sans-serif", size=12, color="#000000"))
-        
+        # Update ONLY specific text elements, avoiding global font changes
+        # This preserves marker symbol fonts
+        try:
+            # Update title font if title exists
+            if export_fig.layout.title and export_fig.layout.title.text:
+                export_fig.update_layout(
+                    title_font_family="Arial",
+                    title_font_size=18,
+                    title_font_color="#000000"
+                )
+            
+            # Update axes fonts carefully
+            export_fig.update_xaxes(
+                title_font_family="Arial",
+                title_font_size=16, 
+                title_font_color="#000000",
+                tickfont_family="Arial",
+                tickfont_size=12,
+                tickfont_color="#000000"
+            )
+            
+            export_fig.update_yaxes(
+                title_font_family="Arial",
+                title_font_size=16,
+                title_font_color="#000000", 
+                tickfont_family="Arial",
+                tickfont_size=12,
+                tickfont_color="#000000"
+            )
+            
+            # Update legend font if legend exists
+            if export_fig.layout.showlegend:
+                export_fig.update_layout(
+                    legend_font_family="Arial",
+                    legend_font_size=12,
+                    legend_font_color="#000000"
+                )
+                
+        except Exception as e:
+            logger.warning(f"Font update warning: {e}")
+            # Continue anyway - better to have working export with original fonts
+            
         return export_fig
     
     @staticmethod
@@ -272,23 +255,8 @@ class ExportManager:
             elif not filename.endswith('.pdf'):
                 filename += '.pdf'
             
-            # Additional font settings for PDF compatibility
-            # Use only basic fonts that exist in PDF standards
-            export_fig.update_layout(
-                font_family="Arial",  # Standard PDF font
-                title_font_family="Arial",
-                legend_font_family="Arial"
-            )
-            
-            # Update axes fonts to standard PDF fonts
-            export_fig.update_xaxes(
-                title_font_family="Arial",
-                tickfont_family="Arial"
-            )
-            export_fig.update_yaxes(
-                title_font_family="Arial", 
-                tickfont_family="Arial"
-            )
+            # DON'T override layout fonts - this breaks marker symbols
+            # The prepare_figure_for_export already handles text fonts properly
             
             # Try kaleido export with PDF-specific settings
             pdf_bytes = export_fig.to_image(
