@@ -27,7 +27,7 @@ Google Form link in the app.
 
 More details for those interested.
 
-Why is it needed if Excel is exist?
+Why is it needed if Excel exists?
 
 The idea came when my colleagues and I were entering data into a shared database.
 Often, someone would update the file, and everyone had to be notified, or it became

@@ -1,18 +1,17 @@
-"""
-Export Manager for GeoQuick
---------------------------
+"""Export Manager for GeoQuick.
+
 Provides helpers to export Plotly figures and data while **keeping true vector output**
 for SVG and PDF formats (i.e. marker symbols remain vectors rather than being
-rasterised). In addition it guarantees **complete PNG snapshots** – even when
+rasterised). In addition it guarantees **complete PNG snapshots** - even when
 your figures contain WebGL traces like `scattergl`.
 
 Strategy
 ~~~~~~~~
-* Convert *any* WebGL trace (whose type ends with "gl") to its standard SVG‑
+* Convert *any* WebGL trace (whose type ends with "gl") to its standard SVG-
   friendly counterpart *only at export time*.
 * Apply layout tweaks (width, height, margins, fonts) uniformly before export.
 
-This keeps the interactive web‑app fast while ensuring that SVG, PDF *and now
+This keeps the interactive web-app fast while ensuring that SVG, PDF *and now
 PNG* contain every marker.
 """
 
@@ -24,6 +23,10 @@ from typing import Optional, Tuple
 
 import plotly.graph_objects as go
 import streamlit as st
+
+import plotly.io as pio
+
+pio.kaleido.scope.default_format = "png"
 
 # ─── Logging ──────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
@@ -53,13 +56,13 @@ class ExportError(Exception):
 
 # ─── Core class ───────────────────────────────────────────────────────────────
 class ExportManager:
-    """Centralises all export‑related helpers."""
+    """Centralises all export related helpers."""
 
-    # Default layout tweaks applied before every export  
+    # Default layout tweaks applied before every export
     DEFAULT_LAYOUT: dict = {
         "width": 1200,
         "height": 800,
-        "margin": dict(l=80, r=120, t=60, b=60),
+        "margin": {"l": 80, "r": 120, "t": 60, "b": 60},
         "showlegend": False,
         "font_family": "Arial",
         "font_size": 14,
@@ -89,8 +92,9 @@ class ExportManager:
 
     # ── Public API ─────────────────────────────────────────────────────────
     @staticmethod
-    def export_html(fig: go.Figure, filename: Optional[str] = None,
-                    cfg: Optional[dict] = None) -> Tuple[str, str]:
+    def export_html(
+        fig: go.Figure, filename: Optional[str] = None, cfg: Optional[dict] = None
+    ) -> Tuple[str, str]:
         try:
             fig_out = ExportManager._prepare(fig, cfg)
             if not filename:
@@ -98,69 +102,78 @@ class ExportManager:
             elif not filename.endswith(".html"):
                 filename += ".html"
 
-            html = fig_out.to_html(include_plotlyjs="inline",
-                                   config={"displayModeBar": True,
-                                           "displaylogo": False,
-                                           "modeBarButtonsToRemove": [
-                                               "pan2d", "lasso2d"]})
+            html = fig_out.to_html(
+                include_plotlyjs="inline",
+                config={
+                    "displayModeBar": True,
+                    "displaylogo": False,
+                    "modeBarButtonsToRemove": ["pan2d", "lasso2d"],
+                },
+            )
             return html, filename
         except Exception as exc:  # noqa: BLE001
             logger.error("HTML export failed: %s", exc)
             raise ExportError(str(exc)) from exc
 
     @staticmethod
-    def export_png(fig: go.Figure, filename: Optional[str] = None,
-                   cfg: Optional[dict] = None) -> Tuple[bytes, str]:
+    def export_png(
+        fig: go.Figure,
+        filename: Optional[str] = None,
+        cfg: Optional[dict] = None,
+    ) -> Tuple[bytes, str]:
         """Export PNG **with all symbols intact** (no missing WebGL layers)."""
         try:
             # 🆕 Ensure WebGL traces are down‑converted before Kaleido snapshot
-            fig_out = ExportManager._vectorise_traces(
-                ExportManager._prepare(fig, cfg)
-            )
+            fig_out = ExportManager._vectorise_traces(ExportManager._prepare(fig, cfg))
             if not filename:
                 filename = f"geoquick_plot_{datetime.now():%Y%m%d_%H%M%S}.png"
             elif not filename.endswith(".png"):
                 filename += ".png"
             return fig_out.to_image(format="png", engine="kaleido"), filename
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("PNG export failed: %s", exc)
             raise ExportError(str(exc)) from exc
 
     @staticmethod
-    def export_svg(fig: go.Figure, filename: Optional[str] = None,
-                   cfg: Optional[dict] = None) -> Tuple[str, str]:
+    def export_svg(
+        fig: go.Figure, filename: Optional[str] = None, cfg: Optional[dict] = None
+    ) -> Tuple[str, str]:
         try:
-            fig_out = ExportManager._vectorise_traces(
-                ExportManager._prepare(fig, cfg)
-            )
+            fig_out = ExportManager._vectorise_traces(ExportManager._prepare(fig, cfg))
             if not filename:
                 filename = f"geoquick_plot_{datetime.now():%Y%m%d_%H%M%S}.svg"
             elif not filename.endswith(".svg"):
                 filename += ".svg"
 
             svg_bytes = fig_out.to_image(format="svg", engine="kaleido")
-            svg_str = svg_bytes.decode("utf-8") if isinstance(svg_bytes, bytes) else svg_bytes
+            svg_str = (
+                svg_bytes.decode("utf-8") if isinstance(svg_bytes, bytes) else svg_bytes
+            )
             return svg_str, filename
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("SVG export failed: %s", exc)
             raise ExportError(str(exc)) from exc
 
     @staticmethod
-    def export_pdf(fig: go.Figure, filename: Optional[str] = None,
-                   cfg: Optional[dict] = None) -> Tuple[bytes, str]:
+    def export_pdf(
+        fig: go.Figure, filename: Optional[str] = None, cfg: Optional[dict] = None
+    ) -> Tuple[bytes, str]:
         try:
-            fig_out = ExportManager._vectorise_traces(
-                ExportManager._prepare(fig, cfg)
-            )
+            fig_out = ExportManager._vectorise_traces(ExportManager._prepare(fig, cfg))
             if not filename:
                 filename = f"geoquick_plot_{datetime.now():%Y%m%d_%H%M%S}.pdf"
             elif not filename.endswith(".pdf"):
                 filename += ".pdf"
 
-            return (fig_out.to_image(format="pdf", engine="kaleido",
-                                     width=fig_out.layout.width,
-                                     height=fig_out.layout.height),
-                    filename)
+            return (
+                fig_out.to_image(
+                    format="pdf",
+                    engine="kaleido",
+                    width=fig_out.layout.width,
+                    height=fig_out.layout.height,
+                ),
+                filename,
+            )
         except Exception as exc:  # noqa: BLE001
             logger.error("PDF export failed: %s", exc)
             raise ExportError(str(exc)) from exc
@@ -168,39 +181,68 @@ class ExportManager:
 
 # ─── Streamlit helpers ───────────────────────────────────────────────────────
 
-def render_export_buttons(fig: go.Figure, export_cfg: Optional[dict] = None,
-                           key_prefix: str = "export") -> None:
-    """Render a trio of download buttons inside Streamlit."""
 
+def render_export_buttons(
+    fig: go.Figure, export_cfg: Optional[dict] = None, key_prefix: str = "export"
+) -> None:
+    """Render a trio of download buttons inside Streamlit."""
     st.markdown("### 📥 Export Plot")
     cloud = _is_cloud_environment()
 
     if cloud:
         # On Streamlit Cloud we only guarantee HTML because Kaleido may be absent
         html, fname = ExportManager.export_html(fig, cfg=export_cfg)
-        st.download_button("💾 Save as HTML", html, fname, mime="text/html",
-                           use_container_width=True, key=f"{key_prefix}_html")
+        st.download_button(
+            "💾 Save as HTML",
+            html,
+            fname,
+            mime="text/html",
+            use_container_width=True,
+            key=f"{key_prefix}_html",
+        )
         st.info("PNG/SVG/PDF exports are disabled in this environment.")
         return
 
     # Desktop / full Python runtime
     col1, col2, col3 = st.columns(3)
 
-    with col1:
-        png_bytes, fname = ExportManager.export_png(fig, cfg=export_cfg)
-        st.download_button("🖼 PNG", png_bytes, fname, mime="image/png",
-                           use_container_width=True, key=f"{key_prefix}_png")
-    with col2:
-        svg_str, fname = ExportManager.export_svg(fig, cfg=export_cfg)
-        st.download_button("✒️ SVG", svg_str, fname, mime="image/svg+xml",
-                           use_container_width=True, key=f"{key_prefix}_svg")
-    with col3:
-        pdf_bytes, fname = ExportManager.export_pdf(fig, cfg=export_cfg)
-        st.download_button("📄 PDF", pdf_bytes, fname, mime="application/pdf",
-                           use_container_width=True, key=f"{key_prefix}_pdf")
+    try:
+        with col1:
+            png_bytes, fname = ExportManager.export_png(fig, cfg=export_cfg)
+            st.download_button(
+                "🖼 PNG",
+                png_bytes,
+                fname,
+                mime="image/png",
+                use_container_width=True,
+                key=f"{key_prefix}_png",
+            )
+        with col2:
+            svg_str, fname = ExportManager.export_svg(fig, cfg=export_cfg)
+            st.download_button(
+                "✒️ SVG",
+                svg_str,
+                fname,
+                mime="image/svg+xml",
+                use_container_width=True,
+                key=f"{key_prefix}_svg",
+            )
+        with col3:
+            pdf_bytes, fname = ExportManager.export_pdf(fig, cfg=export_cfg)
+            st.download_button(
+                "📄 PDF",
+                pdf_bytes,
+                fname,
+                mime="application/pdf",
+                use_container_width=True,
+                key=f"{key_prefix}_pdf",
+            )
+    except Exception:
+        logger.exception("Columns creation failed.")
 
 
 # ─── UI for export settings ─────────────────────────────────────────────────—
+
 
 def render_export_settings() -> dict:
     """Collect custom width / height / margin options from the user."""
@@ -223,5 +265,9 @@ def render_export_settings() -> dict:
                 b=cb.number_input("Bottom", 0, 200, 60),
             )
 
-    return {"width": width, "height": height, "margin": margin,
-            "showlegend": show_legend}
+    return {
+        "width": width,
+        "height": height,
+        "margin": margin,
+        "showlegend": show_legend,
+    }

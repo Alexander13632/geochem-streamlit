@@ -110,6 +110,15 @@ wheels = [
 ]
 
 [[package]]
+name = "classify-imports"
+version = "4.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/b6/6cdc486fced92110a8166aa190b7d60435165119990fc2e187a56d15144b/classify_imports-4.2.0.tar.gz", hash = "sha256:7abfb7ea92149b29d046bd34573d247ba6e68cc28100c801eba4af17964fc40e", size = 5188, upload-time = "2022-07-31T22:59:12.139Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8b/a5/f752351ea2652744f711bf5d478f00e2ceeeff0def6316ea9e1bfa18d8d2/classify_imports-4.2.0-py2.py3-none-any.whl", hash = "sha256:dbbc264b70a470ed8c6c95976a11dfb8b7f63df44ed1af87328bbed2663f5161", size = 5403, upload-time = "2022-07-31T22:59:10.799Z" },
+]
+
+[[package]]
 name = "click"
 version = "8.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -193,6 +202,7 @@ dev = [
     { name = "pylsp-mypy" },
     { name = "pytest" },
     { name = "python-lsp-server" },
+    { name = "reorder-python-imports" },
     { name = "ruff" },
 ]
 
@@ -212,6 +222,7 @@ dev = [
     { name = "pylsp-mypy", specifier = ">=0.7.0" },
     { name = "pytest", specifier = ">=8.4.1" },
     { name = "python-lsp-server", specifier = ">=1.13.0" },
+    { name = "reorder-python-imports", specifier = ">=3.15.0" },
     { name = "ruff", specifier = ">=0.12.4" },
 ]
 
@@ -760,6 +771,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/2f/db/98b5c277be99dd18bfd91dd04e1b759cad18d1a338188c936e92f921c7e2/referencing-0.36.2.tar.gz", hash = "sha256:df2e89862cd09deabbdba16944cc3f10feb6b3e6f18e902f7cc25609a34775aa", size = 74744, upload-time = "2025-01-25T08:48:16.138Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c1/b1/3baf80dc6d2b7bc27a95a67752d0208e410351e3feb4eb78de5f77454d8d/referencing-0.36.2-py3-none-any.whl", hash = "sha256:e8699adbbf8b5c7de96d8ffa0eb5c158b3beafce084968e2ea8bb08c6794dcd0", size = 26775, upload-time = "2025-01-25T08:48:14.241Z" },
+]
+
+[[package]]
+name = "reorder-python-imports"
+version = "3.15.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "classify-imports" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/74/37/3bbc2ca9e90dcc4d22b210cc1cb9f8871696d62641f539b9ed043999118b/reorder_python_imports-3.15.0.tar.gz", hash = "sha256:c9a5d6027213a0b76ba42f13d16224de98cfe100b9f959e617c5a1576360fb90", size = 11500, upload-time = "2025-05-23T18:46:41.517Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0c/85/881cf13d3a91bb2aed45aaedb5f0d2a80688f79353d5c8a7008d121b5f34/reorder_python_imports-3.15.0-py2.py3-none-any.whl", hash = "sha256:a0ab5c9824b0116a2a9197f10d09829942ab52a4db233a2544cd10a7647c2e37", size = 11817, upload-time = "2025-05-23T18:46:40.216Z" },
 ]
 
 [[package]]
