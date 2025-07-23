@@ -41,11 +41,11 @@ color_map_user = base_color.copy()
 symbol_map_user = base_symbol.copy()
 size_map_user = base_size.copy()
 
-# JSON
+# ─── JSON ──────────────────────────────────────────────────────
 uploaded_style = st.sidebar.file_uploader(
     "Upload style (JSON)", type=["json"], key="style_file"
 )
-styles: Dict[str, Dict[str, Any]] = {}  # <<< NEW >>>  initialization one time
+styles: Dict[str, Dict[str, Any]] = {}
 
 
 # ─── SIDEBAR ──────────────────────────────────────────────────────
@@ -64,24 +64,24 @@ plot_type = st.sidebar.selectbox(
 st.sidebar.markdown("### Tooltip columns")
 # default set if this set exist
 hard_defaults = ["MgO", "d98Mo"]
-# оставляем только те, что присутствуют в текущем DataFrame
+# leave only those present in the current DataFrame
 default_hover = [c for c in hard_defaults if c in df.columns]
 hover_cols = st.sidebar.multiselect(
     "Show in tooltip",
     options=list(df.columns),
-    default=default_hover,  # ← empty list if none found
+    default=default_hover,
     key="hover_cols",
 )
 
 hover_cols = hover_cols or []  # if nothing is selected, then an empty list
 
 
-# ─── СБОР СТИЛЕЙ ДЛЯ ВЫБРАННОЙ ГРУППЫ ────────────────────────────
+# ─── Collection of styles for the selected group ────────────────────────────
 def build_group_style(df, group_for_plot, base_color, base_symbol, base_size):
-    """Возвращает карты стилей для любой группировки.
+    """Returns style maps for any grouping.
 
-    • если в датафрейме есть type+Location → наследуем;
-    • иначе генерируем новые карты для выбранной группы."""
+    • if the dataframe has type+Location → inherit;
+    • otherwise, generate new maps for the selected group."""
     have_typeloc = {"type", "Location"}.issubset(df.columns)
 
     # ── 1. default case, as before ──────────────────────────
@@ -104,6 +104,7 @@ def build_group_style(df, group_for_plot, base_color, base_symbol, base_size):
 # --------------------------------------------------------------
 #   MULTIELEMENTAL  PLOT
 # --------------------------------------------------------------
+
 if plot_type == "Multielemental plot":
     fig = None
     group_col: str | None = None
