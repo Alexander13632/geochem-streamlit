@@ -78,4 +78,5 @@ max-complexity = 10
 convention = "numpy"
 
 [tool.setuptools.packages.find]
+where = ["src"]
 exclude = ["tests*"]
