@@ -11,6 +11,9 @@ dependencies = [
   "streamlit>=1.47.0",
 ]
 
+[project.scripts]
+app = "geochem_streamlit.app:main"
+
 [dependency-groups]
 dev = [
   "coverage>=7.9.2",
