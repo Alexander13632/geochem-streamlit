@@ -12,7 +12,7 @@ It is convenient for collaborative work: the link to the Google Sheet is always 
 date, everyone can edit the data, and see results shown immediately in the plot.
 I have now launched open testing of the GeoQuick app for visualizing geochemical data.
 
-You can try it here: [Geochem App](geochem-app-x8wt6zxsp6csnwztd9nvgz.streamlit.app/).
+You can try it here: [Geochem App](https://geochem-app-x8wt6zxsp6csnwztd9nvgz.streamlit.app/).
 
 ## Features
 
@@ -79,7 +79,7 @@ tables.
 Since this app is currently in the pre-testing phase, I really need feedback: bugs,
 suggestions, usability issues, missing features.
 
-Try it here: [Geochem App](geochem-app-x8wt6zxsp6csnwztd9nvgz.streamlit.app/)
+Try it here: [Geochem App](https://geochem-app-x8wt6zxsp6csnwztd9nvgz.streamlit.app/)
 
 ## Feedback
 
