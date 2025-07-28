@@ -6,6 +6,7 @@ from typing import Dict
 
 import pandas as pd
 import streamlit as st
+
 from geochem_streamlit import normalizer
 from geochem_streamlit.binning import binning_widget
 from geochem_streamlit.data_loader import get_dataframe
@@ -230,9 +231,9 @@ def main():
         group_col = st.sidebar.selectbox(
             "Grouping variable",
             [""] + columns,
-            index=([""] + columns).index(default_group)
-            if default_group in columns
-            else 0,
+            index=(
+                ([""] + columns).index(default_group) if default_group in columns else 0
+            ),
         )
 
     log_x = st.sidebar.checkbox("log X")
