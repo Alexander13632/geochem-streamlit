@@ -10,7 +10,7 @@ import streamlit as st
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 
 from geochem_streamlit import normalizer
