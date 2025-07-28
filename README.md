@@ -97,6 +97,11 @@ your OS and setup;
 `uv run streamlit run src/geochem_streamlit/app.py` and navigating to the newly open
 tab in your browser.
 
+_Note: the development follows the latest and greatest Python version.
+It is currently set to be Python3.13.
+While uv should pick it up automatically, if it does not, when creating your virtual
+environment execute: `uv venv --python 3.13` to force it._
+
 
 ## Feedback
 
