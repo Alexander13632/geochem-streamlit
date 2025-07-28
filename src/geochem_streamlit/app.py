@@ -7,12 +7,6 @@ from typing import Dict
 import pandas as pd
 import streamlit as st
 
-import sys
-from pathlib import Path
-
-sys.path.append(str(Path(__file__).resolve().parents[1]))
-
-
 from geochem_streamlit import normalizer
 from geochem_streamlit.binning import binning_widget
 from geochem_streamlit.data_loader import get_dataframe
