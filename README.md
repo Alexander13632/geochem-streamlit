@@ -81,6 +81,23 @@ suggestions, usability issues, missing features.
 
 Try it here: [Geochem App](https://geochem-app-x8wt6zxsp6csnwztd9nvgz.streamlit.app/)
 
+## Installation
+
+To install the repository, execute the following steps:
+- Clone the repository;
+- `cd geochem-streamlit`;
+- Create a virtual environment: `uv venv`;
+- Activate the virtual environment, i.e., `source .venv/bin/activate`, according to
+your OS and setup;
+- Install the requirements:
+  - If you only one to try it out: `uv sync --no-dev`;
+  - If you want to develop, test, or contribute: `uv sync --dev`;
+- Install the editable package: `uv pip install -e .`;
+- Test that the application runs by executing
+`uv run streamlit run src/geochem_streamlit/app.py` and navigating to the newly open
+tab in your browser.
+
+
 ## Feedback
 
 Please share your suggestions and questions in the comments, via private message, or
