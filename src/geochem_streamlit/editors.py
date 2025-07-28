@@ -1,4 +1,4 @@
-from styles import AVAILABLE_SYMBOLS  # если нужно
+from geochem_streamlit.styles import AVAILABLE_SYMBOLS  # если нужно
 import streamlit as st
 import random
 import pandas as pd

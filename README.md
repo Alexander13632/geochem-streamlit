@@ -12,7 +12,7 @@ It is convenient for collaborative work: the link to the Google Sheet is always 
 date, everyone can edit the data, and see results shown immediately in the plot.
 I have now launched open testing of the GeoQuick app for visualizing geochemical data.
 
-You can try it here: [Geochem App](geochem-app-x8wt6zxsp6csnwztd9nvgz.streamlit.app/).
+You can try it here: [Geochem App](https://geochem-app-x8wt6zxsp6csnwztd9nvgz.streamlit.app/).
 
 ## Features
 
@@ -27,7 +27,7 @@ Google Form link in the app.
 
 More details for those interested.
 
-Why is it needed if Excel is exist?
+Why is it needed if Excel exists?
 
 The idea came when my colleagues and I were entering data into a shared database.
 Often, someone would update the file, and everyone had to be notified, or it became
@@ -79,7 +79,29 @@ tables.
 Since this app is currently in the pre-testing phase, I really need feedback: bugs,
 suggestions, usability issues, missing features.
 
-Try it here: [Geochem App](geochem-app-x8wt6zxsp6csnwztd9nvgz.streamlit.app/)
+Try it here: [Geochem App](https://geochem-app-x8wt6zxsp6csnwztd9nvgz.streamlit.app/)
+
+## Installation
+
+To install the repository, execute the following steps:
+- Clone the repository;
+- `cd geochem-streamlit`;
+- Create a virtual environment: `uv venv`;
+- Activate the virtual environment, i.e., `source .venv/bin/activate`, according to
+your OS and setup;
+- Install the requirements:
+  - If you only one to try it out: `uv sync --no-dev`;
+  - If you want to develop, test, or contribute: `uv sync --dev`;
+- Install the editable package: `uv pip install -e .`;
+- Test that the application runs by executing
+`uv run streamlit run src/geochem_streamlit/app.py` and navigating to the newly open
+tab in your browser.
+
+_Note: the development follows the latest and greatest Python version.
+It is currently set to be Python3.13.
+While uv should pick it up automatically, if it does not, when creating your virtual
+environment execute: `uv venv --python 3.13` to force it._
+
 
 ## Feedback
 
