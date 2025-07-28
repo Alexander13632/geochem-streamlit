@@ -7,24 +7,30 @@ from typing import Dict
 import pandas as pd
 import streamlit as st
 
-from . import normalizer
-from .binning import binning_widget
-from .data_loader import get_dataframe
-from .editors import inherit_styles_from_typeloc
-from .export_manager import render_export_buttons
-from .export_manager import render_export_settings
-from .filter_bar import filter_dataframe
-from .plotting import plot_box_plot
-from .plotting import plot_demo_table
-from .plotting import plot_user_table
-from .sidebar_info import show_sidebar_info
-from .styles import AVAILABLE_SYMBOLS
-from .styles import build_style_maps
-from .styles import line_style_editor
-from .tas_plot import show_tas
-from .user_style import generate_group_styles
-from .user_style import group_style_editor
-from .utils import axis_selector
+import sys
+from pathlib import Path
+
+sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
+
+
+from geochem_streamlit import normalizer
+from geochem_streamlit.binning import binning_widget
+from geochem_streamlit.data_loader import get_dataframe
+from geochem_streamlit.editors import inherit_styles_from_typeloc
+from geochem_streamlit.export_manager import render_export_buttons
+from geochem_streamlit.export_manager import render_export_settings
+from geochem_streamlit.filter_bar import filter_dataframe
+from geochem_streamlit.plotting import plot_box_plot
+from geochem_streamlit.plotting import plot_demo_table
+from geochem_streamlit.plotting import plot_user_table
+from geochem_streamlit.sidebar_info import show_sidebar_info
+from geochem_streamlit.styles import AVAILABLE_SYMBOLS
+from geochem_streamlit.styles import build_style_maps
+from geochem_streamlit.styles import line_style_editor
+from geochem_streamlit.tas_plot import show_tas
+from geochem_streamlit.user_style import generate_group_styles
+from geochem_streamlit.user_style import group_style_editor
+from geochem_streamlit.utils import axis_selector
 
 
 def main():
