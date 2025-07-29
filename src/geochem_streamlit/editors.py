@@ -1,11 +1,15 @@
-from geochem_streamlit.styles import AVAILABLE_SYMBOLS  # если нужно
+from geochem_streamlit.styles import AVAILABLE_SYMBOLS
 import streamlit as st
 import random
 import pandas as pd
 
 
 def default_style_editor(
-    df, color_map_user=None, symbol_map_user=None, size_map_user=None, styles=None
+    df,
+    color_map_user=None,
+    symbol_map_user=None,
+    size_map_user=None,
+    styles=None,
 ):
     if color_map_user is None:
         color_map_user = {}

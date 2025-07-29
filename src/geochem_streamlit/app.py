@@ -2,7 +2,6 @@ import copy
 import json
 import random
 from typing import Any
-from typing import Dict
 
 import pandas as pd
 import streamlit as st
@@ -27,19 +26,53 @@ from geochem_streamlit.user_style import group_style_editor
 from geochem_streamlit.utils import axis_selector
 
 
-def main():
+def build_group_style(
+    df: pd.DataFrame,
+    group_for_plot,
+    base_color,
+    base_symbol,
+    base_size,
+) -> tuple[dict[str, str], dict[str, str], dict[str, int]]:
+    """Return style maps for any grouping.
+
+    - if the dataframe has type+Location: inherit;
+    - otherwise, generate new maps for the selected group.
+    """
+    have_typeloc: bool = {"type", "Location"}.issubset(df.columns)
+
+    # ── 1. default case, as before ──────────────────────────
+    if group_for_plot == "type_loc" and have_typeloc:
+        return base_color.copy(), base_symbol.copy(), base_size.copy()
+
+    # ── 2. can we inherit from type|Location? ───────────────────
+    if have_typeloc:
+        return inherit_styles_from_typeloc(
+            df,
+            group_for_plot,
+            base_color,
+            base_symbol,
+            base_size,
+        )
+
+    # ── 3. no type/Location → create new styles  -------------
+    colors, symbols = generate_group_styles(df[group_for_plot].dropna().unique())
+    sizes: dict[str, int] = dict.fromkeys(colors, 10)
+    return colors, symbols, sizes
+
+
+def main() -> None:
     show_sidebar_info()
     st.set_page_config(page_title="GeoQuick", layout="wide")
 
-    # ─── DATA ──────────────────────────────────────────────────────────
     df, user_data = get_dataframe()
-
     columns = list(df.columns)
 
     if {"type", "Location"}.issubset(df.columns):
         df["type_loc"] = df["type"].astype(str) + "|" + df["Location"].astype(str)
         base_color, base_symbol, base_size = build_style_maps(
-            df, type_col="type", loc_col="Location"
+            df,
+            type_col="type",
+            loc_col="Location",
         )
     else:
         df["type_loc"] = ""
@@ -49,13 +82,13 @@ def main():
     symbol_map_user = base_symbol.copy()
     size_map_user = base_size.copy()
 
-    # ─── JSON ──────────────────────────────────────────────────────
     uploaded_style = st.sidebar.file_uploader(
-        "Upload style (JSON)", type=["json"], key="style_file"
+        "Upload style (JSON)",
+        type=["json"],
+        key="style_file",
     )
-    styles: Dict[str, Dict[str, Any]] = {}
+    styles: dict[str, dict[str, Any]] = {}
 
-    # ─── SIDEBAR ──────────────────────────────────────────────────────
     plot_type = st.sidebar.selectbox(
         "Plot type",
         [
@@ -63,7 +96,7 @@ def main():
             "Box plot",
             "TAS diagram",
             "Multielemental plot",
-        ],  # add different plot types here later
+        ],
         index=0,
     )
 
@@ -79,35 +112,7 @@ def main():
         key="hover_cols",
     )
 
-    hover_cols = hover_cols or []  # if nothing is selected, then an empty list
-
-    # ─── Collection of styles for the selected group ────────────────────────────
-    def build_group_style(df, group_for_plot, base_color, base_symbol, base_size):
-        """Returns style maps for any grouping.
-
-        • if the dataframe has type+Location → inherit;
-        • otherwise, generate new maps for the selected group."""
-        have_typeloc = {"type", "Location"}.issubset(df.columns)
-
-        # ── 1. default case, as before ──────────────────────────
-        if group_for_plot == "type_loc" and have_typeloc:
-            return base_color.copy(), base_symbol.copy(), base_size.copy()
-
-        # ── 2. can we inherit from type|Location? ───────────────────
-        if have_typeloc:
-            return inherit_styles_from_typeloc(
-                df, group_for_plot, base_color, base_symbol, base_size
-            )
-
-        # ── 3. no type/Location → create new styles  -------------
-        #     (color, symbol, size)
-        colors, symbols = generate_group_styles(df[group_for_plot].dropna().unique())
-        sizes = {g: 10 for g in colors}  # все по 10 px
-        return colors, symbols, sizes
-
-    # --------------------------------------------------------------
-    #   MULTIELEMENTAL  PLOT
-    # --------------------------------------------------------------
+    hover_cols = hover_cols or []
 
     if plot_type == "Multielemental plot":
         fig = None
@@ -116,8 +121,10 @@ def main():
         norm_set: dict[str, float] | None = None
 
         # 1. селектор группы
-        group_choice = st.sidebar.selectbox(
-            "Grouping variable", [""] + list(df.columns), index=0
+        group_choice: str | None = st.sidebar.selectbox(
+            "Grouping variable",
+            ["", *list(df.columns)],
+            index=0,
         )
         group_col = group_choice or None
 
@@ -125,21 +132,24 @@ def main():
         elems, norm_set = normalizer.norm_controls(df)
 
         # ... выбор group_col, elems, norm_set ...
-
         if elems and norm_set:
             df_plot = df.copy()
             if group_col:
                 df_plot = df_plot[df_plot[group_col].notna()]
 
                 color_map, symbol_map, size_map = build_group_style(
-                    df_plot, group_col, base_color, base_symbol, base_size
+                    df_plot,
+                    group_col,
+                    base_color,
+                    base_symbol,
+                    base_size,
                 )
-                opacity_map = {g: 0.9 for g in color_map}
-                width_map = {g: 2 for g in color_map}
-                dash_map = {g: "solid" for g in color_map}
-                line_color_map = {g: color_map[g] for g in color_map}  # стартуем тем же
-                outline_color_map = {g: "#000000" for g in color_map}  # черный контур
-                outline_width_map = {g: 0 for g in color_map}
+                opacity_map = dict.fromkeys(color_map, 0.9)
+                width_map = dict.fromkeys(color_map, 2)
+                dash_map = dict.fromkeys(color_map, "solid")
+                line_color_map = {g: color_map[g] for g in color_map}
+                outline_color_map = dict.fromkeys(color_map, "#000000")
+                outline_width_map = dict.fromkeys(color_map, 0)
 
                 st.sidebar.markdown(f"---\n### Line & Marker style ({group_col})")
                 (
@@ -216,9 +226,11 @@ def main():
         # for user data — only manual axis selection
         x_axis = axis_selector(df, "X", default=columns[0])
         y_axis = axis_selector(
-            df, "Y", default=columns[1] if len(columns) > 1 else columns[0]
+            df,
+            "Y",
+            default=columns[1] if len(columns) > 1 else columns[0],
         )
-        group_col = st.sidebar.selectbox("Grouping variable", [""] + columns, index=0)
+        group_col = st.sidebar.selectbox("Grouping variable", ["", *columns], index=0)
     else:
         # for default data — can set defaults
         default_x = "MgO" if "MgO" in columns else (columns[0] if columns else "")
@@ -230,9 +242,9 @@ def main():
         y_axis = axis_selector(df, "Y", default=default_y)
         group_col = st.sidebar.selectbox(
             "Grouping variable",
-            [""] + columns,
+            ["", *columns],
             index=(
-                ([""] + columns).index(default_group) if default_group in columns else 0
+                (["", *columns]).index(default_group) if default_group in columns else 0
             ),
         )
 
@@ -249,7 +261,9 @@ def main():
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         if numeric_cols:
             second_num_col = st.sidebar.selectbox(
-                "Sub-bin by numeric …", [""] + numeric_cols, index=0
+                "Sub-bin by numeric …",
+                ["", *numeric_cols],
+                index=0,
             )
 
             if second_num_col:
@@ -288,7 +302,11 @@ def main():
     if group_for_plot:
         df = df[df[group_for_plot].notna()]  # выбран столбец группировки
         color_map_user, symbol_map_user, size_map_user = build_group_style(
-            df, group_for_plot, base_color, base_symbol, base_size
+            df,
+            group_for_plot,
+            base_color,
+            base_symbol,
+            base_size,
         )
         opacity_map_user = {g: 0.9 for g in color_map_user}
 
@@ -331,7 +349,10 @@ def main():
                     pre_symbols.index(cur_symbol) if cur_symbol in pre_symbols else 0
                 )
                 symbol = st.selectbox(
-                    "Symbol", pre_symbols, index=sym_idx, key=f"demo_sym_{key}"
+                    "Symbol",
+                    pre_symbols,
+                    index=sym_idx,
+                    key=f"demo_sym_{key}",
                 )
                 size = st.slider("Size (px)", 2, 80, cur_size, key=f"demo_sz_{key}")
                 alpha = (
@@ -339,7 +360,12 @@ def main():
                 )
                 outcol = st.color_picker("Outline", "#000000", key=f"demo_out_{key}")
                 outwid = st.slider(
-                    "Outline width", 1.0, 6.0, 1.0, 0.5, key=f"demo_ow_{key}"
+                    "Outline width",
+                    1.0,
+                    6.0,
+                    1.0,
+                    0.5,
+                    key=f"demo_ow_{key}",
                 )
 
                 color_map_user[key] = color
@@ -459,7 +485,10 @@ def main():
     # ─── DOWNLOADS ─────────────────────────────────────────────────────
     export_fig = copy.deepcopy(fig)
     export_fig.update_layout(
-        width=1200, height=800, margin=dict(l=80, r=120, t=60, b=60), showlegend=False
+        width=1200,
+        height=800,
+        margin=dict(l=80, r=120, t=60, b=60),
+        showlegend=False,
     )
 
     # ─── UNIVERSAL EXPORT SECTION ─────────────────────────────────────────

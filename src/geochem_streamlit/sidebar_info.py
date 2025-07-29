@@ -1,7 +1,7 @@
 import streamlit as st
 
 
-def show_sidebar_info():
+def show_sidebar_info() -> None:
     st.sidebar.markdown("""
     ## 🌋👋 GeoQuick  
     **1. Upload a file or link to a table (Google Sheets)**  

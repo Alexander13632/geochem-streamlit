@@ -1,12 +1,9 @@
 import random
-import plotly.express as px
 import streamlit as st
 
 
-# Получить список стандартных символов Plotly (или используй свой AVAILABLE_SYMBOLS)
-def get_available_symbols():
-    # Можно использовать заранее заданный список, если есть
-    # return ["circle", "square", ...]
+def get_available_symbols() -> list[str]:
+    """Get list of available symbols."""
     return [
         "circle",
         "square",
@@ -24,7 +21,7 @@ def get_available_symbols():
     ]
 
 
-def generate_group_styles(groups):
+def generate_group_styles(groups: list[str]) -> tuple[dict[str, str], dict[str, str]]:
     random.seed(42)  # чтобы цвета были всегда одинаковы для одной и той же группы
     colors = []
     for _ in groups:
@@ -63,7 +60,10 @@ def group_style_editor(groups, color_map, symbol_map, size_map=None, opacity_map
                 else 0
             )
             symbol = st.selectbox(
-                "Symbol", available_symbols, index=sym_idx, key=f"user_symbol_{group}"
+                "Symbol",
+                available_symbols,
+                index=sym_idx,
+                key=f"user_symbol_{group}",
             )
             size = st.slider("Size (px)", 5, 40, cur_size, key=f"user_size_{group}")
             opacity = (

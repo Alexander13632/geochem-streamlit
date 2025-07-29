@@ -7,9 +7,8 @@ def load_csv(url: str) -> pd.DataFrame:
     return pd.read_csv(url)
 
 
-def get_dataframe_from_gsheet(gs_url: str):
+def get_dataframe_from_gsheet(gs_url: str) -> tuple[pd.DataFrame, bool]:
     try:
-        # Принимаем сразу рабочие CSV-ссылки
         if "export?format=csv" in gs_url or "output=csv" in gs_url:
             csv_url = gs_url
         elif "/edit" in gs_url:
@@ -21,16 +20,18 @@ def get_dataframe_from_gsheet(gs_url: str):
             return pd.DataFrame(), False
         df = pd.read_csv(csv_url)
         st.success("Data from Google Sheets loaded successfully!")
-        return df, True
     except Exception as e:
         st.error(f"Error reading Google Sheets: {e}")
         return pd.DataFrame(), False
+    else:
+        return df, True
 
 
-def get_dataframe():
+def get_dataframe() -> tuple[pd.DataFrame, bool]:
     gs_url = st.sidebar.text_input("Insert link to Google Sheets (optional):", value="")
     uploaded_file = st.sidebar.file_uploader(
-        "Upload CSV/TXT/XLSX-file", type=["csv", "txt", "xls", "xlsx"]
+        "Upload a chart",
+        type=["csv", "txt", "xls", "xlsx"],
     )
     user_data = False
 
@@ -57,7 +58,8 @@ def get_dataframe():
     # Дефолтные данные
     try:
         df = load_csv(st.secrets["CSV_URL"])
-        return df, False
     except Exception as e:
         st.error(f"Error loading default data: {e}")
         return pd.DataFrame(), False
+    else:
+        return df, False
