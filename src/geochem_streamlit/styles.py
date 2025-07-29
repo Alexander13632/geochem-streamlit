@@ -1,4 +1,4 @@
-"""Gnerate colour, symbol and size maps for Streamlit geo-plot app.
+"""Generate colour, symbol and size maps for Streamlit geo-plot app.
 
 Known `type` values take fixed styles (see TYPE_STYLES).
 All unknown types receive deterministic random colours & symbols so that
@@ -6,10 +6,14 @@ nothing is left unstyled.
 """
 
 from __future__ import annotations
+
 import colorsys
 import random
-import pandas as pd
 import streamlit as st
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # Pre-defined styles for well-known tectono-magmatic types.
 TYPE_STYLES: dict[str, dict[str, str | int]] = {
